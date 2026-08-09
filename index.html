@@ -67,6 +67,18 @@
     color:var(--text);padding:8px 11px;font-size:.88rem;width:100%;
   }
   .sync input:focus{outline:none;border-color:var(--gold)}
+  .sync select{
+    background:rgba(6,10,34,.7);border:1.5px solid var(--border-dim);border-radius:8px;
+    color:var(--text);padding:8px 11px;font-size:.88rem;width:100%;
+  }
+  .noteinput{
+    width:100%;min-height:58px;resize:vertical;
+    background:rgba(6,10,34,.7);border:1.5px solid var(--border-dim);border-radius:8px;
+    color:var(--text);padding:8px 11px;font-size:.88rem;line-height:1.4;
+    font-family:inherit;
+  }
+  .noteinput:focus{outline:none;border-color:var(--gold)}
+  .noteinput::placeholder{color:#6a78ac}
   .sync .hint{font-size:.72rem;color:var(--text-dim);line-height:1.5}
   .sync .row2{display:flex;gap:7px}
   .sync .row2 .btn{flex:1}
@@ -239,15 +251,19 @@
   </div>
   <div class="fstatus" id="fstatus" hidden></div>
   <div class="sync" id="syncPanel" hidden>
+    <select id="langSel" aria-label="Language">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select>
     <input id="gsUrl" placeholder="Google Apps Script URL (…/exec)" autocomplete="off">
-    <div class="hint" style="text-align:center">— или через GitHub Gist —</div>
-    <input id="ghToken" type="password" placeholder="GitHub token (права: только gist)" autocomplete="off">
-    <input id="ghGist" placeholder="Gist ID (оставь пустым — создам новый)" autocomplete="off">
+    <div class="hint" style="text-align:center" id="orGist">— или через GitHub Gist —</div>
+    <input id="ghToken" type="password" placeholder="GitHub token" autocomplete="off">
+    <input id="ghGist" placeholder="Gist ID" autocomplete="off">
     <div class="row2">
       <button class="btn gold" id="syncConnect">Подключить</button>
       <button class="btn" id="syncOff">Отключить</button>
     </div>
-    <div class="hint">Заполни что-то одно. Google-вариант: script.google.com → вставить скрипт (спроси у Claude) → Deploy → Web app → доступ «Anyone» → скопировать URL. На втором устройстве вставь тот же URL.</div>
+    <div class="hint" id="syncHint"></div>
     <div class="row2">
       <button class="btn" id="csvBtn">Импорт CSV</button>
       <button class="btn" id="bakBtn">Бэкап</button>
@@ -283,7 +299,76 @@
 
 /* ================= data ================= */
 var KEY="gamelog-v1";
-var STATUSES={backlog:"Беклог",playing:"Играю",done:"Пройдено",dropped:"Брошено"};
+var LKEY="gamelog-lang";
+var STATUS_KEYS=["backlog","playing","done","dropped"];
+var TR={
+ru:{
+  st_backlog:"Беклог",st_playing:"Играю",st_done:"Пройдено",st_dropped:"Брошено",
+  title:"Журнал игр",subtitle:"беклог · прогресс · история прохождений",
+  stat_playing:"играю",stat_backlog:"беклог",stat_done:"пройдено",
+  tab_all:"Все",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
+  dice_bar:"🎲 Во что поиграть? Пусть решит судьба",dice_aria:"Случайная игра из беклога",
+  dice_none:"Беклог пуст — вот это достижение!",dice_pick:"Судьба выбрала: ",
+  long_ago:"Давно",ago_short:"давно",done_old:"Пройдено давно",replayed:"+ Перепройдено",
+  add_year:"+ год…",remove_from:"Убрать из «{y}»",del:"Удалить",times:" раз",
+  confirm_del:"Удалить «{n}» полностью, со всей историей?",
+  no_runs_left:"Прохождений не осталось — игра вернулась в беклог",
+  added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
+  h:" ч",min:" мин",cs_title:"Оценка сообщества Playnite",
+  empty:"Пока пусто.",empty_search:"Ничего не найдено. Нажми «+ Добавить», чтобы внести эту игру.",
+  added_backlog:"Добавлено в беклог: ",already:"уже в списке",
+  sync:"синк",syncing:"синхронизация…",offline:"офлайн · сохранено локально",offline_local:"офлайн · локально",
+  storage_warn:"Хранилище недоступно — в этом окне данные не сохранятся",
+  gist_created:"Gist создан. Скопируй его ID на другие устройства",
+  connected:"Подключено — синхронизирую",connected_drive:"Подключено к Google Drive",
+  need_token:"Вставь Apps Script URL или токен GitHub",bad_url:"URL должен начинаться с https://script.google.com/ и кончаться на /exec",
+  sync_off:"Синхронизация отключена, данные остались локально",
+  gist_fail:"Не вышло создать gist: ",
+  imp_none:"В файле не нашлось строк с играми",imp_nocol:"Не нашёл колонку с названием (Name) — проверь экспорт",
+  imp_done:"Импорт: добавлено ",imp_upd:", обновлено ",imp_fail:"Не удалось разобрать CSV: ",
+  bak_done:"Файл скачан — положи его в надёжное место",restored:"Восстановлено из ",games_w:" игр",
+  not_backup:"Это не файл журнала: ",
+  ph_gs:"Google Apps Script URL (…/exec)",or_gist:"— или через GitHub Gist —",
+  ph_token:"GitHub token (права: только gist)",ph_gist:"Gist ID (оставь пустым — создам новый)",
+  connect:"Подключить",disconnect:"Отключить",csv:"Импорт CSV",backup:"Бэкап",restore:"Восстановить",
+  hint:"Заполни что-то одно. Google-вариант: script.google.com → вставить скрипт → Deploy → Web app → доступ «Anyone» → скопировать URL. На втором устройстве вставь тот же URL или токен+ID."
+},
+en:{
+  st_backlog:"Backlog",st_playing:"Playing",st_done:"Beaten",st_dropped:"Dropped",
+  title:"Game Log",subtitle:"backlog · progress · completion history",
+  stat_playing:"playing",stat_backlog:"backlog",stat_done:"beaten",
+  tab_all:"All",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",
+  dice_bar:"🎲 What to play? Let fate decide",dice_aria:"Random game from backlog",
+  dice_none:"Backlog is empty — what an achievement!",dice_pick:"Fate has chosen: ",
+  long_ago:"Way back",ago_short:"way back",done_old:"Beaten way back",replayed:"+ Replayed",
+  add_year:"+ year…",remove_from:"Remove from “{y}”",del:"Delete",times:" times",
+  confirm_del:"Delete “{n}” entirely, with all history?",
+  no_runs_left:"No completions left — game returned to backlog",
+  added_to:"added to ",platform:"Platform",launcher:"Launcher",note_ph:"Game note — thoughts, where you stopped, what to remember…",
+  h:" h",min:" min",cs_title:"Playnite community score",
+  empty:"Nothing here yet.",empty_search:"Nothing found. Tap “+ Add” to add this game.",
+  added_backlog:"Added to backlog: ",already:"is already in the list",
+  sync:"sync",syncing:"syncing…",offline:"offline · saved locally",offline_local:"offline · local",
+  storage_warn:"Storage unavailable — data won't persist in this window",
+  gist_created:"Gist created. Copy its ID to your other devices",
+  connected:"Connected — syncing",connected_drive:"Connected to Google Drive",
+  need_token:"Paste an Apps Script URL or a GitHub token",bad_url:"URL must start with https://script.google.com/ and end with /exec",
+  sync_off:"Sync disabled, data kept locally",
+  gist_fail:"Couldn't create gist: ",
+  imp_none:"No game rows found in the file",imp_nocol:"Couldn't find the Name column — check the export",
+  imp_done:"Import: added ",imp_upd:", updated ",imp_fail:"Couldn't parse CSV: ",
+  bak_done:"File downloaded — keep it somewhere safe",restored:"Restored from ",games_w:" games",
+  not_backup:"This is not a log file: ",
+  ph_gs:"Google Apps Script URL (…/exec)",or_gist:"— or via GitHub Gist —",
+  ph_token:"GitHub token (scope: gist only)",ph_gist:"Gist ID (leave empty — I'll create one)",
+  connect:"Connect",disconnect:"Disconnect",csv:"Import CSV",backup:"Backup",restore:"Restore",
+  hint:"Fill in just one. Google option: script.google.com → paste the script → Deploy → Web app → access “Anyone” → copy the URL. On the second device paste the same URL or token+ID."
+}};
+var lang="ru";
+try{lang=localStorage.getItem(LKEY)||"ru";}catch(e){}
+if(!TR[lang])lang="ru";
+function t(k){return (TR[lang]&&TR[lang][k])!==undefined?TR[lang][k]:(TR.ru[k]||k);}
+function stLabel(s){return t("st_"+s);}
 var COMMON_PLATFORMS=["PC","PS5","PS4","PS3","PS2","PS1","PSP","PS Vita","Xbox Series","Xbox 360",
   "Switch","Switch 2","Wii","GameCube","N64","SNES","NES","GBA","DS","3DS","Saturn","Dreamcast","Genesis","Steam Deck","Android"];
 var COMMON_SOURCES=["Steam","GOG","Epic","Xbox","EA app","Ubisoft Connect","Battle.net","Эмулятор","Диск","Playnite"];
@@ -306,7 +391,7 @@ function save(){
   state.updatedAt=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(state));}
   catch(e){
-    if(storageOK){storageOK=false;toast("Хранилище недоступно — открой файл локально, чтобы сохранялось");}
+    if(storageOK){storageOK=false;toast(t("storage_warn"));}
   }
   scheduleFileWrite();
   schedulePush();
@@ -329,7 +414,7 @@ function migrate(st){
 function addYear(g,y){
   if(g.years.indexOf(y)===-1){g.years.push(y);g.years.sort(function(a,b){return a-b;});}
 }
-function yLabel(y){return +y===0?"Давно":y;}
+function yLabel(y){return +y===0?t("long_ago"):y;}
 
 /* ---- файл данных (game-log.json в облачной папке) ---- */
 var fileHandle=null,fsTimer=null;
@@ -345,7 +430,7 @@ function writeToFile(){
     return w.write(JSON.stringify(state,null,2)).then(function(){return w.close();});
   }).catch(function(err){
     fileHandle=null;setFStatus(null);
-    toast("Связь с файлом потеряна — сохрани вручную кнопкой «Сохранить»");
+    toast(t("offline"));
   });
 }
 function scheduleFileWrite(){
@@ -415,8 +500,8 @@ function pushRemote(){
   if(!syncOn()||syncBusy)return;
   syncBusy=true;
   remotePut()
-  .then(function(){setStatus(syncLabel()+" · синк "+nowTime());})
-  .catch(function(e){setStatus("офлайн · сохранено локально",true);})
+  .then(function(){setStatus(syncLabel()+" · "+t("sync")+" "+nowTime());})
+  .catch(function(e){setStatus(t("offline"),true);})
   .then(function(){syncBusy=false;});
 }
 function schedulePush(){
@@ -426,7 +511,7 @@ function schedulePush(){
 }
 function pullRemote(){
   if(!syncOn())return;
-  setStatus(syncLabel()+" · синхронизация…");
+  setStatus(syncLabel()+" · "+t("syncing"));
   remoteGet().then(function(remote){
     if(!remote||!Array.isArray(remote.games)){pushRemote();return;} // там пусто — заливаем своё
     var r=remote.updatedAt||0,l=state.updatedAt||0;
@@ -435,13 +520,13 @@ function pullRemote(){
       openId=null;
       try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
       render();
-      setStatus(syncLabel()+" · синк "+nowTime());
+      setStatus(syncLabel()+" · "+t("sync")+" "+nowTime());
     }else if(l>r){
       pushRemote();
-    }else setStatus(syncLabel()+" · синк "+nowTime());
-  }).catch(function(e){setStatus("офлайн · локально ("+e.message+")",true);});
+    }else setStatus(syncLabel()+" · "+t("sync")+" "+nowTime());
+  }).catch(function(e){setStatus(t("offline_local")+" ("+e.message+")",true);});
 }
-if(!storageOK)setTimeout(function(){toast("Хранилище недоступно — в этом окне данные не сохранятся");},600);
+if(!storageOK)setTimeout(function(){toast(t("storage_warn"));},600);
 
 /* ================= ui state ================= */
 var filter="all",query="",openId=null;
@@ -470,69 +555,71 @@ function cardHTML(g,ctx){
   var badge;
   if(ctx!==null){
     var mult=(+ctx===0&&(g.oldCount||1)>1)?" ×"+g.oldCount:"";
-    badge='<span class="badge done">Пройдено · '+yLabel(ctx)+mult+'</span>';
+    badge='<span class="badge done">'+stLabel("done")+' · '+yLabel(ctx)+mult+'</span>';
   }else{
-    badge='<span class="badge '+g.status+'">'+STATUSES[g.status]+'</span>';
+    badge='<span class="badge '+g.status+'">'+stLabel(g.status)+'</span>';
   }
   // в секции статуса покажем историю прохождений чипом
   var histChip="";
   if(ctx===null&&g.years.length){
     var hist=g.years.map(function(y){
-      return +y===0?("давно"+((g.oldCount||1)>1?"×"+g.oldCount:"")):y;
+      return +y===0?(t("ago_short")+((g.oldCount||1)>1?"×"+g.oldCount:"")):y;
     }).join(", ");
     histChip='<span class="plat">✓ '+hist+'</span>';
   }
+  var noteChip=g.note?'<span class="plat">📝</span>':"";
 
   var actions="";
   if(ctx===null){
-    actions+=Object.keys(STATUSES).filter(function(s){return s!==g.status;})
+    actions+=STATUS_KEYS.filter(function(s){return s!==g.status;})
       .map(function(s){
-        var label=s==="done"?"Пройдено ("+cy+")":STATUSES[s];
+        var label=s==="done"?stLabel("done")+" ("+cy+")":stLabel(s);
         return '<button class="btn" data-act="status" data-s="'+s+'">'+label+'</button>';
       }).join("");
     if(g.years.indexOf(0)===-1){
-      actions+='<button class="btn" data-act="status" data-s="done" data-old="1">Пройдено давно</button>';
+      actions+='<button class="btn" data-act="status" data-s="done" data-old="1">'+t("done_old")+'</button>';
     }
     if(g.status==="done"&&g.years.indexOf(cy)===-1){
-      actions+='<button class="btn gold" data-act="addyear">+ Перепройдено ('+cy+')</button>';
+      actions+='<button class="btn gold" data-act="addyear">'+t("replayed")+' ('+cy+')</button>';
     }
     // добавить прохождение в любом году
     var missing=[];
     for(var ay=cy;ay>=2018;ay--)if(g.years.indexOf(ay)===-1)missing.push(ay);
     if(missing.length){
-      actions+='<select data-act="addyearsel" aria-label="Добавить год прохождения">'
-        +'<option value="">+ год…</option>'
+      actions+='<select data-act="addyearsel">'
+        +'<option value="">'+t("add_year")+'</option>'
         +missing.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
         +'</select>';
     }
   }else{
-    var yearOpts='<option value="0"'+(+ctx===0?" selected":"")+'>Давно</option>';
+    var yearOpts='<option value="0"'+(+ctx===0?" selected":"")+'>'+t("long_ago")+'</option>';
     for(var y=cy+1;y>=2018;y--){
       yearOpts+='<option value="'+y+'"'+(+ctx===y?" selected":"")+'>'+y+'</option>';
     }
-    actions+='<select data-act="year" aria-label="Год этого прохождения">'+yearOpts+'</select>';
+    actions+='<select data-act="year">'+yearOpts+'</select>';
     if(+ctx===0){
       actions+='<input class="platinput oldcnt" data-act="oldcount" type="number" min="1" max="99" '
-        +'value="'+(g.oldCount||1)+'" aria-label="Сколько раз пройдено давно"> раз';
+        +'value="'+(g.oldCount||1)+'">'+t("times");
     }
-    actions+='<button class="btn" data-act="rmyear">Убрать из «'+yLabel(ctx)+'»</button>';
+    actions+='<button class="btn" data-act="rmyear">'+t("remove_from").replace("{y}",yLabel(ctx))+'</button>';
     if(g.years.indexOf(cy)===-1){
-      actions+='<button class="btn gold" data-act="addyear">+ Перепройдено ('+cy+')</button>';
+      actions+='<button class="btn gold" data-act="addyear">'+t("replayed")+' ('+cy+')</button>';
     }
   }
-  actions+='<input class="platinput" data-act="plat" list="platformList" placeholder="Платформа" '
-    +'value="'+(g.platform?esc(g.platform):"")+'" aria-label="Платформа">';
-  actions+='<input class="platinput" data-act="src" list="sourceList" placeholder="Лончер" '
-    +'value="'+(g.source?esc(g.source):"")+'" aria-label="Лончер">';
+  actions+='<input class="platinput" data-act="plat" list="platformList" placeholder="'+t("platform")+'" '
+    +'value="'+(g.platform?esc(g.platform):"")+'">';
+  actions+='<input class="platinput" data-act="src" list="sourceList" placeholder="'+t("launcher")+'" '
+    +'value="'+(g.source?esc(g.source):"")+'">';
   if(g.status==="done"||g.status==="dropped"||g.years.length){
-    actions+='<div class="rate" role="group" aria-label="Оценка">';
+    actions+='<div class="rate" role="group">';
     for(var r=1;r<=5;r++){
       actions+='<button class="star'+(g.rating&&r<=g.rating?" on":"")
-        +'" data-act="rate" data-v="'+r+'" aria-label="'+r+' из 5">★</button>';
+        +'" data-act="rate" data-v="'+r+'">★</button>';
     }
     actions+='</div>';
   }
-  actions+='<button class="btn del" data-act="del">Удалить</button>';
+  actions+='<textarea class="noteinput" data-act="note" placeholder="'+t("note_ph")+'">'+(g.note?esc(g.note):"")+'</textarea>';
+  actions+='<button class="btn del" data-act="del">'+t("del")+'</button>';
 
   var starsView="";
   if(g.rating||g.cs){
@@ -542,7 +629,7 @@ function cardHTML(g,ctx){
     }
     if(g.cs){
       var csCls=g.cs>=80?"hi":(g.cs>=60?"mid":"");
-      starsView+='<span class="cs '+csCls+'" title="Оценка сообщества Playnite">'+g.cs+'</span>';
+      starsView+='<span class="cs '+csCls+'" title="'+t("cs_title")+'">'+g.cs+'</span>';
     }
     starsView+='</div>';
   }
@@ -551,7 +638,7 @@ function cardHTML(g,ctx){
   if(g.genres)metaParts.push(esc(g.genres));
   if(g.time){
     var h=g.time/3600;
-    metaParts.push('<span class="tp">⏱ '+(h>=1?Math.round(h)+" ч":Math.round(g.time/60)+" мин")+'</span>');
+    metaParts.push('<span class="tp">⏱ '+(h>=1?Math.round(h)+t("h"):Math.round(g.time/60)+t("min"))+'</span>');
   }
   var metaView=metaParts.length?'<div class="meta">'+metaParts.join(" · ")+'</div>':"";
 
@@ -561,6 +648,7 @@ function cardHTML(g,ctx){
     +(g.platform?'<span class="plat">'+esc(g.platform)+'</span>':"")
     +(g.source?'<span class="src">'+esc(g.source)+'</span>':"")
     +histChip
+    +noteChip
     +badge+'</div>'
     +metaView
     +starsView
@@ -594,7 +682,7 @@ function render(){
   function section(key,title,items,ctx){
     if(!items.length)return"";
     var col=!!state.collapsed[key];
-    var extra=key==="backlog"?'<button class="dice" data-dice aria-label="Случайная игра из беклога">🎲</button>':"";
+    var extra=key==="backlog"?'<button class="dice" data-dice aria-label="'+t("dice_aria")+'">🎲</button>':"";
     return '<section class="sec">'
       +'<div class="yearhead'+(col?' col':'')+'" data-key="'+key
       +'" role="button" tabindex="0" aria-expanded="'+(!col)+'">'
@@ -605,12 +693,12 @@ function render(){
   }
   var hasAnything=filter==="done"?bySearch.some(function(g){return g.years.length;}):shown.length;
   if(!hasAnything){
-    html='<div class="empty">'+(q?"Ничего не найдено. Нажми «+ Добавить», чтобы внести эту игру.":"Пока пусто.")+'</div>';
+    html='<div class="empty">'+(q?t("empty_search"):t("empty"))+'</div>';
   }else if(filter==="done"||filter==="all"){
     // группировка: играю → беклог → пройдено по годам → брошено
     if(filter==="all"){
-      html+=section("playing","Играю",shown.filter(function(g){return g.status==="playing";}),null);
-      html+=section("backlog","Беклог",shown.filter(function(g){return g.status==="backlog";}),null);
+      html+=section("playing",stLabel("playing"),shown.filter(function(g){return g.status==="playing";}),null);
+      html+=section("backlog",stLabel("backlog"),shown.filter(function(g){return g.status==="backlog";}),null);
     }
     // годовые группы: по истории прохождений, независимо от текущего статуса
     var years={};
@@ -620,16 +708,16 @@ function render(){
     Object.keys(years)
       .sort(function(a,b){return (+b)-(+a);})
       .forEach(function(y){
-        html+=section("y"+y,"Пройдено · "+yLabel(y),years[y],+y);
+        html+=section("y"+y,stLabel("done")+" · "+yLabel(y),years[y],+y);
       });
     if(filter==="all"){
-      html+=section("dropped","Брошено",shown.filter(function(g){return g.status==="dropped";}),null);
+      html+=section("dropped",stLabel("dropped"),shown.filter(function(g){return g.status==="dropped";}),null);
     }
   }else{
     if(filter==="backlog"&&shown.length){
-      html+='<button class="dicebar" data-dice>🎲 Во что поиграть? Пусть решит судьба</button>';
+      html+='<button class="dicebar" data-dice>'+t("dice_bar")+'</button>';
     }
-    html+=section(filter,STATUSES[filter],shown,null);
+    html+=section(filter,stLabel(filter),shown,null);
   }
   document.getElementById("list").innerHTML=html;
 }
@@ -652,15 +740,15 @@ function addGame(name){
   name=name.trim();if(!name)return;
   var n=norm(name);
   var dup=state.games.find(function(g){return norm(g.name)===n;});
-  if(dup){toast("«"+dup.name+"» уже в списке ("+STATUSES[dup.status]+")");return;}
+  if(dup){toast("«"+dup.name+"» "+t("already")+" ("+stLabel(dup.status)+")");return;}
   state.games.unshift({id:state.nextId++,name:name,status:"backlog",years:[],platform:null,rating:null});
   save();
   document.getElementById("search").value="";query="";
-  render();toast("Добавлено в беклог: "+name);
+  render();toast(t("added_backlog")+name);
 }
 document.getElementById("addBtn").addEventListener("click",function(){
   var v=document.getElementById("search").value.trim();
-  if(!v)v=(prompt("Название игры:")||"").trim();
+  if(!v)v=(prompt(t("prompt_name"))||"").trim();
   if(v)addGame(v);
 });
 document.getElementById("search").addEventListener("keydown",function(e){
@@ -672,7 +760,7 @@ document.getElementById("list").addEventListener("click",function(e){
   var dice=e.target.closest("[data-dice]");
   if(dice){
     var pool=state.games.filter(function(g){return g.status==="backlog";});
-    if(!pool.length){toast("Беклог пуст — вот это достижение!");return;}
+    if(!pool.length){toast(t("dice_none"));return;}
     var pick;
     do{pick=pool[Math.floor(Math.random()*pool.length)];}
     while(pool.length>1&&pick.id===lastDice);
@@ -685,7 +773,7 @@ document.getElementById("list").addEventListener("click",function(e){
       el.classList.add("chosen");
       el.scrollIntoView({block:"center",behavior:"smooth"});
     }
-    toast("Судьба выбрала: «"+pick.name+"»");
+    toast(t("dice_pick")+"«"+pick.name+"»");
     return;
   }
   var head=e.target.closest(".yearhead");
@@ -720,13 +808,13 @@ document.getElementById("list").addEventListener("click",function(e){
     addYear(g,cy);
     if(g.status==="backlog")g.status="done";
     save();render();
-    toast("«"+g.name+"» добавлена в "+cy);return;
+    toast("«"+g.name+"» "+t("added_to")+cy);return;
   }
   if(act==="rmyear"){
     g.years=g.years.filter(function(y){return y!==ctx;});
     if(!g.years.length&&g.status==="done"){
       g.status="backlog";
-      toast("Прохождений не осталось — игра вернулась в беклог");
+      toast(t("no_runs_left"));
     }
     openId=null;save();render();return;
   }
@@ -736,7 +824,7 @@ document.getElementById("list").addEventListener("click",function(e){
     save();render();return;
   }
   if(act==="del"){
-    if(confirm("Удалить «"+g.name+"» полностью, со всей историей?")){
+    if(confirm(t("confirm_del").replace("{n}",g.name))){
       state.games=state.games.filter(function(x){return x.id!==id;});
       openId=null;save();render();
     }
@@ -753,11 +841,12 @@ document.getElementById("list").addEventListener("keydown",function(e){
 });
 document.getElementById("list").addEventListener("change",function(e){
   var act=e.target.dataset.act;
-  if(act!=="year"&&act!=="plat"&&act!=="src"&&act!=="oldcount"&&act!=="addyearsel")return;
+  if(act!=="year"&&act!=="plat"&&act!=="src"&&act!=="oldcount"&&act!=="addyearsel"&&act!=="note")return;
   var card=e.target.closest(".card");
   var g=state.games.find(function(x){return x.id===+card.dataset.id;});
   if(!g)return;
-  if(act==="year"){
+  if(act==="note"){g.note=e.target.value.trim()||null;save();render();}
+  else if(act==="year"){
     var oldY=card.dataset.ctx==="s"?null:+card.dataset.ctx;
     var newY=+e.target.value;
     if(oldY!==null){
@@ -777,7 +866,7 @@ document.getElementById("list").addEventListener("change",function(e){
       addYear(g,v);
       if(g.status==="backlog")g.status="done";
       save();render();
-      toast("«"+g.name+"» добавлена в "+v);
+      toast("«"+g.name+"» "+t("added_to")+v);
     }
   }
   else if(act==="plat"){g.platform=e.target.value.trim()||null;save();render();}
@@ -828,7 +917,7 @@ document.getElementById("csvFile").addEventListener("change",function(e){
   r.onload=function(){
     try{
       var rows=parseCSV(r.result);
-      if(rows.length<2){toast("В файле не нашлось строк с играми");return;}
+      if(rows.length<2){toast(t("imp_none"));return;}
       var head=rows[0].map(function(h){return h.trim().toLowerCase();});
       var iName=-1,iStatus=-1,iPlat=-1,iScore=-1,iSrc=-1,iGen=-1,iRel=-1,iTime=-1,iComm=-1;
       head.forEach(function(h,i){
@@ -842,7 +931,7 @@ document.getElementById("csvFile").addEventListener("change",function(e){
         if(iTime===-1&&/^time\s*played$/.test(h))iTime=i;
         if(iComm===-1&&/^community\s*score$/.test(h))iComm=i;
       });
-      if(iName===-1){toast("Не нашёл колонку с названием (Name) — проверь экспорт");return;}
+      if(iName===-1){toast(t("imp_nocol"));return;}
       var existing={};
       state.games.forEach(function(g){existing[norm(g.name)]=g;});
       var added=0,updated=0;
@@ -887,8 +976,8 @@ document.getElementById("csvFile").addEventListener("change",function(e){
         }
       }
       save();render();
-      toast("Импорт: добавлено "+added+(updated?", обновлено "+updated:""));
-    }catch(err){toast("Не удалось разобрать CSV: "+err.message);}
+      toast(t("imp_done")+added+(updated?t("imp_upd")+updated:""));
+    }catch(err){toast(t("imp_fail")+err.message);}
     e.target.value="";
   };
   r.readAsText(f);
@@ -901,18 +990,18 @@ function applyLoaded(p,srcName){
   openId=null;
   try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
   render();
-  toast("Загружено из "+srcName+": "+p.games.length+" игр");
+  toast(t("restored")+srcName+": "+p.games.length+t("games_w"));
 }
 
 document.getElementById("bakBtn").addEventListener("click",function(){
-  if(fileHandle){writeToFile();toast("Сохранено в файл");return;}
+  if(fileHandle){writeToFile();toast(t("bak_done"));return;}
   if(canFS()){
     window.showSaveFilePicker({
       suggestedName:"game-log.json",
       types:[{description:"Данные журнала",accept:{"application/json":[".json"]}}]
     }).then(function(h){
       fileHandle=h;setFStatus(h.name);writeToFile();
-      toast("Файл создан — теперь всё сохраняется в него само");
+      toast(t("bak_done"));
     }).catch(function(err){
       if(err&&err.name==="AbortError")return;
       downloadJSON();
@@ -928,7 +1017,7 @@ function downloadJSON(){
   a.download="game-log.json";
   a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
-  toast("Файл скачан — положи его в облачную папку");
+  toast(t("bak_done"));
 }
 
 document.getElementById("resBtn").addEventListener("click",function(){
@@ -943,7 +1032,7 @@ document.getElementById("resBtn").addEventListener("click",function(){
       });
     }).catch(function(err){
       if(err&&err.name==="AbortError")return;
-      toast("Не удалось открыть: "+err.message);
+      toast(t("not_backup")+err.message);
     });
     return;
   }
@@ -954,7 +1043,7 @@ document.getElementById("jsonFile").addEventListener("change",function(e){
   var r=new FileReader();
   r.onload=function(){
     try{applyLoaded(JSON.parse(r.result),f.name);}
-    catch(err){toast("Это не файл журнала: "+err.message);}
+    catch(err){toast(t("not_backup")+err.message);}
     e.target.value="";
   };
   r.readAsText(f);
@@ -976,21 +1065,21 @@ document.getElementById("syncConnect").addEventListener("click",function(){
   var g=document.getElementById("ghGist").value.trim();
   if(gs){
     if(gs.indexOf("https://script.google.com/")!==0){
-      toast("URL должен начинаться с https://script.google.com/ и кончаться на /exec");return;
+      toast(t("bad_url"));return;
     }
     syncCfg={gs:gs,token:"",gist:""};saveSyncCfg();
     pullRemote();
     document.getElementById("syncPanel").hidden=true;
-    toast("Подключено к Google Drive");
+    toast(t("connected_drive"));
     return;
   }
-  if(!t){toast("Вставь Apps Script URL или токен GitHub");return;}
+  if(!t){toast(t("need_token"));return;}
   syncCfg={gs:"",token:t,gist:g};
   if(g){
     saveSyncCfg();
     pullRemote();
     document.getElementById("syncPanel").hidden=true;
-    toast("Подключено — синхронизирую");
+    toast(t("connected"));
   }else{
     gh("POST","/gists",{
       description:"Game log — журнал игр",
@@ -999,19 +1088,54 @@ document.getElementById("syncConnect").addEventListener("click",function(){
     }).then(function(res){
       syncCfg.gist=res.id;saveSyncCfg();
       document.getElementById("ghGist").value=res.id;
-      setStatus("gist · синк "+nowTime());
-      toast("Gist создан. Скопируй его ID на другие устройства");
-    }).catch(function(e){toast("Не вышло создать gist: "+e.message);});
+      setStatus("gist · "+t("sync")+" "+nowTime());
+      toast(t("gist_created"));
+    }).catch(function(e){toast(t("gist_fail")+e.message);});
   }
 });
 document.getElementById("syncOff").addEventListener("click",function(){
   syncCfg={gs:"",token:"",gist:""};saveSyncCfg();
   setStatus(null);
-  toast("Синхронизация отключена, данные остались локально");
+  toast(t("sync_off"));
 });
 window.addEventListener("online",function(){if(syncOn())pullRemote();});
 
-render();
+/* ================= язык ================= */
+function applyLang(){
+  document.documentElement.lang=lang;
+  document.querySelector("h1").textContent=t("title");
+  document.title=t("title");
+  document.querySelector(".subtitle").textContent=t("subtitle");
+  var statSpans=document.querySelectorAll(".stat span");
+  statSpans[0].textContent=t("stat_playing");
+  statSpans[1].textContent=t("stat_backlog");
+  statSpans[2].textContent=t("stat_done");
+  document.querySelectorAll(".tab").forEach(function(tb){
+    var f=tb.dataset.f;
+    tb.textContent=f==="all"?t("tab_all"):stLabel(f);
+  });
+  document.getElementById("search").placeholder=t("search_ph");
+  document.getElementById("addBtn").textContent=t("add_btn");
+  document.getElementById("gsUrl").placeholder=t("ph_gs");
+  document.getElementById("orGist").textContent=t("or_gist");
+  document.getElementById("ghToken").placeholder=t("ph_token");
+  document.getElementById("ghGist").placeholder=t("ph_gist");
+  document.getElementById("syncConnect").textContent=t("connect");
+  document.getElementById("syncOff").textContent=t("disconnect");
+  document.getElementById("syncHint").textContent=t("hint");
+  document.getElementById("csvBtn").textContent=t("csv");
+  document.getElementById("bakBtn").textContent=t("backup");
+  document.getElementById("resBtn").textContent=t("restore");
+  document.getElementById("langSel").value=lang;
+  render();
+}
+document.getElementById("langSel").addEventListener("change",function(e){
+  lang=e.target.value;
+  try{localStorage.setItem(LKEY,lang);}catch(err){}
+  applyLang();
+});
+
+applyLang();
 if(syncOn())pullRemote();
 })();
 </script>
