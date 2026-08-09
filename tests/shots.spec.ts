@@ -26,6 +26,8 @@ test.describe("@shots key screens", () => {
   test("open card actions", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
     await openCard(page, "Skyrim Special Edition");
+    // keep the whole action panel in the frame
+    await page.locator(".card.open .actions").scrollIntoViewIfNeeded();
     await page.screenshot({ path: shot(ti, "03-card-open") });
   });
 
