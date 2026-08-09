@@ -169,8 +169,8 @@
   @keyframes blink{50%{opacity:.25}}
   @media (prefers-reduced-motion:reduce){.card.playing .cursor{animation:none}}
 
-  .card .row{display:flex;align-items:center;gap:8px}
-  .card .name{flex:1;font-size:.98rem}
+  .card .row{display:flex;align-items:center;gap:5px 8px;flex-wrap:wrap}
+  .card .name{flex:1 1 auto;min-width:55%;overflow-wrap:anywhere;font-size:.98rem}
   .card.done .name{color:#d9e2f5}
   .card.dropped .name{color:var(--gray);text-decoration:line-through;text-decoration-color:rgba(138,143,156,.6)}
   .badge{
@@ -404,6 +404,15 @@ var state=load();
 migrate(state);
 try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
 
+function cleanPlat(p){
+  return p.replace(/\s*\(Windows\)/i,"")
+    .replace(/^Microsoft\s+/i,"")
+    .replace(/^Nintendo\s+/i,"")
+    .replace(/^Sony\s+/i,"")
+    .replace(/^PlayStation\s*/i,"PS")
+    .replace(/^Sega\s+/i,"")
+    .trim();
+}
 function migrate(st){
   if(!st.collapsed)st.collapsed={};
   (st.games||[]).forEach(function(g){
@@ -411,7 +420,7 @@ function migrate(st){
       g.years=(g.status==="done")?[g.year||0]:[];
       delete g.year;
     }
-    if(g.platform)g.platform=g.platform.replace(/\s*\(Windows\)/,"");
+    if(g.platform)g.platform=cleanPlat(g.platform);
   });
   return st;
 }
@@ -943,7 +952,7 @@ document.getElementById("csvFile").addEventListener("change",function(e){
         var name=(rows[i][iName]||"").trim();
         if(!name)continue;
         var st=iStatus>-1?mapStatus(rows[i][iStatus]):"backlog";
-        var plat=iPlat>-1?(rows[i][iPlat]||"").split(/[,;]/)[0].trim().replace(/\s*\(Windows\)/,""):"";
+        var plat=iPlat>-1?cleanPlat((rows[i][iPlat]||"").split(/[,;]/)[0]):"";
         var src=iSrc>-1?(rows[i][iSrc]||"").trim():"Playnite"; // игра из CSV точно есть в библиотеке
         var genres=iGen>-1?(rows[i][iGen]||"").split(",").slice(0,2).map(function(x){return x.trim();}).filter(Boolean).join(", "):"";
         var rel=0;
