@@ -455,9 +455,15 @@ function migrate(st){
       delete g.year;
     }
     if(g.platform)g.platform=cleanPlat(g.platform);
+    if(g.oldCount&&g.oldCount>1){
+      g.counts=g.counts||{};
+      if(!g.counts[0])g.counts[0]=g.oldCount;
+    }
+    delete g.oldCount;
   });
   return st;
 }
+function cnt(g,y){return (g.counts&&g.counts[y])||1;}
 function addYear(g,y){
   if(g.years.indexOf(y)===-1){g.years.push(y);g.years.sort(function(a,b){return a-b;});}
 }
@@ -611,7 +617,8 @@ function cardHTML(g,ctx){
 
   var badge;
   if(ctx!==null){
-    var mult=(+ctx===0&&(g.oldCount||1)>1)?" ×"+g.oldCount:"";
+    var cc=cnt(g,+ctx);
+    var mult=cc>1?" ×"+cc:"";
     badge='<span class="badge done">'+stLabel("done")+' · '+yLabel(ctx)+mult+'</span>';
   }else{
     badge='<span class="badge '+g.status+'">'+stLabel(g.status)+'</span>';
@@ -620,7 +627,8 @@ function cardHTML(g,ctx){
   var histChip="";
   if(ctx===null&&g.years.length){
     var hist=g.years.map(function(y){
-      return +y===0?(t("ago_short")+((g.oldCount||1)>1?"×"+g.oldCount:"")):y;
+      var yc=cnt(g,+y);
+      return (+y===0?t("ago_short"):y)+(yc>1?"×"+yc:"");
     }).join(", ");
     histChip='<span class="plat">✓ '+hist+'</span>';
   }
@@ -651,10 +659,8 @@ function cardHTML(g,ctx){
       yearOpts+='<option value="'+y+'"'+(+ctx===y?" selected":"")+'>'+y+'</option>';
     }
     actions+='<select data-act="year">'+yearOpts+'</select>';
-    if(+ctx===0){
-      actions+='<input class="platinput oldcnt" data-act="oldcount" type="number" min="1" max="99" '
-        +'value="'+(g.oldCount||1)+'">'+t("times");
-    }
+    actions+='<input class="platinput oldcnt" data-act="oldcount" type="number" min="1" max="99" '
+      +'value="'+cnt(g,+ctx)+'">'+t("times");
     actions+='<button class="btn" data-act="rmyear">'+t("remove_from").replace("{y}",yLabel(ctx))+'</button>';
     var missing2=[];
     for(var ay2=cy;ay2>=2018;ay2--)if(g.years.indexOf(ay2)===-1)missing2.push(ay2);
@@ -974,6 +980,7 @@ document.getElementById("list").addEventListener("click",function(e){
   }
   if(act==="rmyear"){
     g.years=g.years.filter(function(y){return y!==ctx;});
+    if(g.counts)delete g.counts[ctx];
     if(!g.years.length&&g.status==="done"){
       g.status="backlog";
       toast(t("no_runs_left"));
@@ -991,7 +998,12 @@ document.getElementById("list").addEventListener("click",function(e){
     if(!confirm(t("confirm_merge").replace("{a}",g.name).replace("{b}",other.name)))return;
     // годы и счётчик «давно»
     other.years.forEach(function(y){addYear(g,y);});
-    if((other.oldCount||1)>(g.oldCount||1))g.oldCount=other.oldCount;
+    if(other.counts){
+      g.counts=g.counts||{};
+      for(var ck in other.counts){
+        if((other.counts[ck]||1)>(g.counts[ck]||1))g.counts[ck]=other.counts[ck];
+      }
+    }
     // статус: берём более «продвинутый»
     var rank={backlog:0,dropped:1,playing:2,done:3};
     if(rank[other.status]>rank[g.status])g.status=other.status;
@@ -1035,12 +1047,19 @@ document.getElementById("list").addEventListener("change",function(e){
     if(oldY!==null){
       g.years=g.years.filter(function(y){return y!==oldY;});
       addYear(g,newY);
+      if(g.counts&&g.counts[oldY]){
+        var mv=g.counts[oldY];delete g.counts[oldY];
+        if(mv>(g.counts[newY]||1))g.counts[newY]=mv;
+      }
       openId=g.id+"@"+newY;
     }
     save();render();
   }
   else if(act==="oldcount"){
-    g.oldCount=Math.max(1,Math.min(99,parseInt(e.target.value,10)||1));
+    var cy2=+card.dataset.ctx;
+    var v2=Math.max(1,Math.min(99,parseInt(e.target.value,10)||1));
+    g.counts=g.counts||{};
+    if(v2>1)g.counts[cy2]=v2;else delete g.counts[cy2];
     save();render();
   }
   else if(act==="addyearsel"){
