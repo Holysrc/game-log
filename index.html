@@ -85,6 +85,16 @@
   }
   .noteinput:focus{outline:none;border-color:var(--gold)}
   .noteinput::placeholder{color:#6a78ac}
+  .sugwrap{position:relative;display:inline-block}
+  .sug{position:absolute;top:calc(100% + 4px);left:0;z-index:20;
+    background:var(--win-bot);border:1.5px solid var(--border-dim);border-radius:8px;
+    padding:5px;display:none;flex-wrap:wrap;gap:4px;max-width:min(260px,72vw);
+    box-shadow:0 6px 16px rgba(0,0,0,.55)}
+  .sugwrap:focus-within .sug{display:flex}
+  .sug:empty{display:none!important}
+  .sugbtn{border:1px solid var(--border-dim);border-radius:5px;background:rgba(6,10,34,.7);
+    color:var(--text);padding:4px 8px;font-size:.78rem;cursor:pointer}
+  .sugbtn:active{border-color:var(--gold);color:var(--gold)}
   .sync .hint{font-size:.72rem;color:var(--text-dim);line-height:1.5}
 
   /* ---- tabs ---- */
@@ -275,6 +285,7 @@
       <button class="btn" id="bakBtn">Бэкап</button>
       <button class="btn" id="resBtn">Восстановить</button>
     </div>
+    <button class="btn" id="nodataBtn">Игры без данных Playnite</button>
   </div>
 </header>
 
@@ -319,7 +330,7 @@ ru:{
   add_year:"+ год…",remove_from:"Убрать из «{y}»",del:"Удалить",times:" раз",
   confirm_del:"Удалить «{n}» полностью, со всей историей?",
   no_runs_left:"Прохождений не осталось — игра вернулась в беклог",
-  added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
+  added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",rel_ph:"Год выхода",genres_ph:"Жанры",nodata:"Игры без данных Playnite",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
   h:" ч",min:" мин",cs_title:"Оценка сообщества Playnite",
   empty:"Пока пусто.",empty_search:"Ничего не найдено. Нажми «+ Добавить», чтобы внести эту игру.",
   added_backlog:"Добавлено в беклог: ",already:"уже в списке",
@@ -350,7 +361,7 @@ en:{
   add_year:"+ year…",remove_from:"Remove from “{y}”",del:"Delete",times:" times",
   confirm_del:"Delete “{n}” entirely, with all history?",
   no_runs_left:"No completions left — game returned to backlog",
-  added_to:"added to ",platform:"Platform",launcher:"Launcher",note_ph:"Game note — thoughts, where you stopped, what to remember…",
+  added_to:"added to ",platform:"Platform",launcher:"Launcher",rel_ph:"Release year",genres_ph:"Genres",nodata:"Games without Playnite data",note_ph:"Game note — thoughts, where you stopped, what to remember…",
   h:" h",min:" min",cs_title:"Playnite community score",
   empty:"Nothing here yet.",empty_search:"Nothing found. Tap “+ Add” to add this game.",
   added_backlog:"Added to backlog: ",already:"is already in the list",
@@ -621,10 +632,14 @@ function cardHTML(g,ctx){
       actions+='<button class="btn gold" data-act="addyear">'+t("replayed")+' ('+cy+')</button>';
     }
   }
-  actions+='<input class="platinput" data-act="plat" list="platformList" placeholder="'+t("platform")+'" '
-    +'value="'+(g.platform?esc(g.platform):"")+'">';
-  actions+='<input class="platinput" data-act="src" list="sourceList" placeholder="'+t("launcher")+'" '
-    +'value="'+(g.source?esc(g.source):"")+'">';
+  actions+='<span class="sugwrap"><input class="platinput" data-act="plat" placeholder="'+t("platform")+'" '
+    +'value="'+(g.platform?esc(g.platform):"")+'"><div class="sug"></div></span>';
+  actions+='<span class="sugwrap"><input class="platinput" data-act="src" placeholder="'+t("launcher")+'" '
+    +'value="'+(g.source?esc(g.source):"")+'"><div class="sug"></div></span>';
+  actions+='<input class="platinput oldcnt" data-act="rel" type="number" min="1970" max="2030" placeholder="'+t("rel_ph")+'" '
+    +'value="'+(g.rel||"")+'" style="width:110px">';
+  actions+='<input class="platinput" data-act="genres" placeholder="'+t("genres_ph")+'" '
+    +'value="'+(g.genres?esc(g.genres):"")+'" style="width:160px">';
   if(g.status==="done"||g.status==="dropped"||g.years.length){
     actions+='<div class="rate" role="group">';
     for(var r=1;r<=5;r++){
@@ -679,7 +694,11 @@ function render(){
   document.getElementById("stDone").textContent=c.done;
 
   var q=norm(query);
-  function matches(g){return !q||norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")).indexOf(q)!==-1;}
+  var noData=query.trim().toLowerCase()==="#nodata";
+  function matches(g){
+    if(noData)return !g.source&&!g.genres&&!g.cs;
+    return !q||norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")).indexOf(q)!==-1;
+  }
   var bySearch=state.games.filter(matches);
   var shown=bySearch.filter(function(g){return filter==="all"||g.status===filter;});
 
@@ -711,7 +730,7 @@ function render(){
   }
   var hasAnything=filter==="done"?bySearch.some(function(g){return g.years.length;}):shown.length;
   if(!hasAnything){
-    html='<div class="empty">'+(q?t("empty_search"):t("empty"))+'</div>';
+    html='<div class="empty">'+((q||noData)?t("empty_search"):t("empty"))+'</div>';
   }else if(filter==="done"||filter==="all"){
     // группировка: играю → беклог → пройдено по годам → брошено
     if(filter==="all"){
@@ -771,6 +790,52 @@ document.getElementById("addBtn").addEventListener("click",function(){
 });
 document.getElementById("search").addEventListener("keydown",function(e){
   if(e.key==="Enter")e.target.blur(); // просто закрыть клавиатуру, поиск уже отработал
+});
+
+/* ---- подсказки платформ и лончеров (работают и на Android) ---- */
+function sugValues(kind){
+  var set={};
+  (kind==="plat"?COMMON_PLATFORMS:COMMON_SOURCES).forEach(function(v){set[v]=1;});
+  state.games.forEach(function(g){
+    var v=kind==="plat"?g.platform:g.source;
+    if(v)set[v]=1;
+  });
+  return Object.keys(set);
+}
+function fillSug(input){
+  var kind=input.dataset.act;
+  if(kind!=="plat"&&kind!=="src")return;
+  var box=input.parentElement.querySelector(".sug");
+  if(!box)return;
+  var q=input.value.trim().toLowerCase();
+  var vals=sugValues(kind).filter(function(v){
+    return v.toLowerCase()!==q&&(!q||v.toLowerCase().indexOf(q)!==-1);
+  }).slice(0,12);
+  box.innerHTML=vals.map(function(v){
+    return '<button type="button" class="sugbtn" data-sug="'+esc(v)+'">'+esc(v)+'</button>';
+  }).join("");
+}
+document.getElementById("list").addEventListener("focusin",function(e){
+  if(e.target.dataset&&(e.target.dataset.act==="plat"||e.target.dataset.act==="src"))fillSug(e.target);
+});
+document.getElementById("list").addEventListener("input",function(e){
+  if(e.target.dataset&&(e.target.dataset.act==="plat"||e.target.dataset.act==="src"))fillSug(e.target);
+});
+document.getElementById("list").addEventListener("mousedown",function(e){
+  var b=e.target.closest(".sugbtn");
+  if(!b)return;
+  e.preventDefault(); // не даём инпуту потерять фокус до клика
+});
+document.getElementById("list").addEventListener("click",function(e){
+  var b=e.target.closest(".sugbtn");
+  if(!b)return;
+  var input=b.closest(".sugwrap").querySelector("input");
+  var card=b.closest(".card");
+  var g=state.games.find(function(x){return x.id===+card.dataset.id;});
+  if(!g)return;
+  if(input.dataset.act==="plat")g.platform=b.dataset.sug;
+  else g.source=b.dataset.sug;
+  save();render();
 });
 
 var lastDice=null;
@@ -859,7 +924,7 @@ document.getElementById("list").addEventListener("keydown",function(e){
 });
 document.getElementById("list").addEventListener("change",function(e){
   var act=e.target.dataset.act;
-  if(act!=="year"&&act!=="plat"&&act!=="src"&&act!=="oldcount"&&act!=="addyearsel"&&act!=="note")return;
+  if(["year","plat","src","oldcount","addyearsel","note","rel","genres"].indexOf(act)===-1)return;
   var card=e.target.closest(".card");
   var g=state.games.find(function(x){return x.id===+card.dataset.id;});
   if(!g)return;
@@ -888,6 +953,8 @@ document.getElementById("list").addEventListener("change",function(e){
     }
   }
   else if(act==="plat"){g.platform=e.target.value.trim()||null;save();render();}
+  else if(act==="rel"){var rv=parseInt(e.target.value,10);g.rel=(rv>=1970&&rv<=2030)?rv:null;save();render();}
+  else if(act==="genres"){g.genres=e.target.value.trim()||null;save();render();}
   else{g.source=e.target.value.trim()||null;save();render();}
 });
 
@@ -1144,9 +1211,16 @@ function applyLang(){
   document.getElementById("csvBtn").textContent=t("csv");
   document.getElementById("bakBtn").textContent=t("backup");
   document.getElementById("resBtn").textContent=t("restore");
+  document.getElementById("nodataBtn").textContent=t("nodata");
   document.getElementById("langSel").value=lang;
   render();
 }
+document.getElementById("nodataBtn").addEventListener("click",function(){
+  document.getElementById("search").value="#nodata";
+  query="#nodata";
+  document.getElementById("syncPanel").hidden=true;
+  render();
+});
 document.getElementById("langSel").addEventListener("change",function(e){
   lang=e.target.value;
   try{localStorage.setItem(LKEY,lang);}catch(err){}
