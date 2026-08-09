@@ -986,6 +986,17 @@ document.getElementById("list").addEventListener("click",function(e){
   save();render();
 });
 
+function scrollToCard(el){
+  // content-visibility даёт лишь оценочные высоты карточек за экраном,
+  // поэтому корректируем позицию несколькими прыжками, пока размеры не устаканятся
+  var tries=0;
+  (function step(){
+    if(!el.isConnected)return;
+    el.scrollIntoView({block:"center"});
+    if(++tries<5)setTimeout(step,90);
+  })();
+}
+
 function patchCardByKey(k){
   if(!k)return;
   var parts=k.split("@");
@@ -1014,7 +1025,7 @@ document.getElementById("list").addEventListener("click",function(e){
     var el=document.querySelector('.card[data-id="'+pick.id+'"][data-ctx="s"]');
     if(el){
       el.classList.add("chosen");
-      el.scrollIntoView({block:"center",behavior:"smooth"});
+      scrollToCard(el);
     }
     toast(t("dice_pick")+"«"+pick.name+"»");
     return;
