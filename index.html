@@ -724,7 +724,8 @@ function cardHTML(g,ctx){
   // возможные дубли: сравниваем названия без «шумовых» слов изданий
   var EDITION_WORDS=["goty","game","of","the","year","edition","remastered","remaster",
     "definitive","complete","deluxe","enhanced","directors","director","cut","hd",
-    "ultimate","gold","collection","anniversary","special","legendary"];
+    "ultimate","gold","collection","anniversary","special","legendary",
+    "s","re","intergrade","royal","expanded"];
   function dupKey(name){
     return norm(name).split(" ").filter(function(w){
       return EDITION_WORDS.indexOf(w)===-1;
