@@ -1152,7 +1152,7 @@ document.getElementById("csvFile").addEventListener("change",function(e){
           if(!g.rel&&rel)g.rel=rel;
           if(tsec>(g.time||0))g.time=tsec; // наигранное время только растёт
           if(cs)g.cs=cs; // народная оценка — всегда свежая из CSV
-          if(!g.series&&ser)g.series=ser;
+          if(ser)g.series=ser; // серия — приоритет у Playnite
         }else{
           var ng={id:state.nextId++,name:name,status:st,
             years:st==="done"?[0]:[], // импортированные прохождения — в «Давно»
