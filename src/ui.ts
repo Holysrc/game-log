@@ -4,7 +4,7 @@ import {
   state, save, cnt, addYear, yLabel,
   STATUS_KEYS, COMMON_PLATFORMS, COMMON_SOURCES
 } from "./data";
-import { t, stLabel, lang, setLang } from "./i18n";
+import { t, stLabel, lang, setLang, gamesWord, runsWord } from "./i18n";
 import { esc, norm, toast } from "./util";
 
 /* ================= ui state ================= */
@@ -252,9 +252,9 @@ export function render(): void {
         if (g.years.length) doneN++;
       });
       html += '<div class="sersum">❖ <b>' + esc(serGames[0].series!) + '</b> — '
-        + '<span class="n">' + serGames.length + '</span>' + t("ser_games") + ' · '
+        + '<span class="n">' + serGames.length + '</span>' + gamesWord(serGames.length) + ' · '
         + '<span class="n">' + doneN + '</span>' + t("ser_done") + ' · '
-        + '<span class="n">' + runs + '</span>' + t("ser_runs") + '</div>';
+        + '<span class="n">' + runs + '</span>' + runsWord(runs) + '</div>';
     }
   }
   function section(key: string, title: string | number, items: Game[], ctx: number | null): string {

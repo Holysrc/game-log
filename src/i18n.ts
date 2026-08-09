@@ -16,7 +16,7 @@ ru:{
   added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",name_ph:"Название игры",rel_ph:"Год выхода",genres_ph:"Жанры",series_ph:"Серия",nodata:"Игры без данных Playnite",
   sort_default:"⇅ Без сортировки",sort_name:"По алфавиту",sort_cs:"По оценке сообщества",
   sort_rating:"По моей оценке",sort_rel:"По году выхода",sort_time:"По наигранному",
-  merge_with:"⇆ Объединить с «{n}»",merge_keep:"Оставить какую:",cancel:"Отмена",nomerge_done:"Понял, эта пара — не дубли. Вернуть можно в настройках",reset_nomerge:"Вернуть скрытые пары дублей",ser_games:" игр",ser_runs:" прохождений",ser_done:" пройдено",nomerge_reset:"Скрытые пары снова будут предлагаться",merged:"Объединено: ",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
+  merge_with:"⇆ Объединить с «{n}»",merge_keep:"Оставить какую:",cancel:"Отмена",nomerge_done:"Понял, эта пара — не дубли. Вернуть можно в настройках",reset_nomerge:"Вернуть скрытые пары дублей",ser_done:" пройдено",nomerge_reset:"Скрытые пары снова будут предлагаться",merged:"Объединено: ",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
   h:" ч",min:" мин",cs_title:"Оценка сообщества Playnite",
   empty:"Пока пусто.",empty_search:"Ничего не найдено. Нажми «+ Добавить», чтобы внести эту игру.",
   added_backlog:"Добавлено в беклог: ",already:"уже в списке",
@@ -37,6 +37,7 @@ ru:{
   hint:"Заполни что-то одно. Google-вариант: script.google.com → вставить скрипт → Deploy → Web app → доступ «Anyone» → скопировать URL. На втором устройстве вставь тот же URL или токен+ID.",
   dice_title:"Кубик судьбы",dice_genre:"Жанр",dice_any:"Любой",dice_any_f:"Любая",
   games_1:" игра",games_2:" игры",games_5:" игр",
+  runs_1:" прохождение",runs_2:" прохождения",runs_5:" прохождений",
   dice_cs:"Оценка сообщества",dice_cs_any:"Любая",
   dice_lib:"Есть в библиотеке",dice_fresh:"Только нетронутые",dice_series:"Серия",
   dice_pool:"В пуле: ",dice_roll:"🎲 Бросить",dice_quick:"Без фильтров",
@@ -66,7 +67,7 @@ en:{
   added_to:"added to ",platform:"Platform",launcher:"Launcher",name_ph:"Game title",rel_ph:"Release year",genres_ph:"Genres",series_ph:"Series",nodata:"Games without Playnite data",
   sort_default:"⇅ Default order",sort_name:"Alphabetical",sort_cs:"By community score",
   sort_rating:"By my rating",sort_rel:"By release year",sort_time:"By time played",
-  merge_with:"⇆ Merge with “{n}”",merge_keep:"Keep which one:",cancel:"Cancel",nomerge_done:"Got it, not a duplicate. Restore anytime in settings",reset_nomerge:"Restore hidden duplicate pairs",ser_games:" games",ser_runs:" playthroughs",ser_done:" beaten",nomerge_reset:"Hidden pairs will be suggested again",merged:"Merged: ",note_ph:"Game note — thoughts, where you stopped, what to remember…",
+  merge_with:"⇆ Merge with “{n}”",merge_keep:"Keep which one:",cancel:"Cancel",nomerge_done:"Got it, not a duplicate. Restore anytime in settings",reset_nomerge:"Restore hidden duplicate pairs",ser_done:" beaten",nomerge_reset:"Hidden pairs will be suggested again",merged:"Merged: ",note_ph:"Game note — thoughts, where you stopped, what to remember…",
   h:" h",min:" min",cs_title:"Playnite community score",
   empty:"Nothing here yet.",empty_search:"Nothing found. Tap “+ Add” to add this game.",
   added_backlog:"Added to backlog: ",already:"is already in the list",
@@ -87,6 +88,7 @@ en:{
   hint:"Fill in just one. Google option: script.google.com → paste the script → Deploy → Web app → access “Anyone” → copy the URL. On the second device paste the same URL or token+ID.",
   dice_title:"Dice of fate",dice_genre:"Genre",dice_any:"Any",dice_any_f:"Any",
   games_1:" game",games_2:" games",games_5:" games",
+  runs_1:" playthrough",runs_2:" playthroughs",runs_5:" playthroughs",
   dice_cs:"Community score",dice_cs_any:"Any",
   dice_lib:"In my library",dice_fresh:"Untouched only",dice_series:"Series",
   dice_pool:"In the pool: ",dice_roll:"🎲 Roll",dice_quick:"No filters",
@@ -120,13 +122,16 @@ export function stLabel(s: string): string {
   return t("st_" + s);
 }
 
-// «N игр(а/ы)» / "N game(s)" — proper plural for a games count
-export function gamesWord(n: number): string {
+// RU numeral agreement: 1 → _1, 2–4 → _2, 5+ → _5 (with 11–14 exception)
+function plural(n: number, key: string): string {
   if (lang === "ru") {
     var m10 = n % 10, m100 = n % 100;
-    if (m10 === 1 && m100 !== 11) return t("games_1");
-    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return t("games_2");
-    return t("games_5");
+    if (m10 === 1 && m100 !== 11) return t(key + "_1");
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return t(key + "_2");
+    return t(key + "_5");
   }
-  return n === 1 ? t("games_1") : t("games_5");
+  return n === 1 ? t(key + "_1") : t(key + "_5");
 }
+
+export function gamesWord(n: number): string { return plural(n, "games"); }
+export function runsWord(n: number): string { return plural(n, "runs"); }
