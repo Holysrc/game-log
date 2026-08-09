@@ -20,7 +20,15 @@ export const L = {
     merged: "Объединено",
     restored: "Восстановлено из",
     sync: "синк",
-    searchPh: "Поиск по играм…"
+    searchPh: "Поиск по играм…",
+    resTitle: "Итоги",
+    resAll: "Всё время",
+    resEmpty: "За этот период прохождений нет",
+    resGoty: "Игра года",
+    resBeaten: "Пройдено игр",
+    resRuns: "Прохождений",
+    resLongest: "Самая длинная",
+    resSeriesAll: "Главная серия"
   },
   en: {
     title: "Game Log",
@@ -37,7 +45,15 @@ export const L = {
     merged: "Merged",
     restored: "Restored from",
     sync: "sync",
-    searchPh: "Search games…"
+    searchPh: "Search games…",
+    resTitle: "Results",
+    resAll: "All time",
+    resEmpty: "No completions in this period",
+    resGoty: "Game of the year",
+    resBeaten: "Games beaten",
+    resRuns: "Playthroughs",
+    resLongest: "Longest game",
+    resSeriesAll: "Top series"
   }
 } as const;
 

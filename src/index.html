@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b1120">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f9e7ae'/%3E%3Cstop offset='.5' stop-color='%23e9c46a'/%3E%3Cstop offset='1' stop-color='%23b07b1e'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g)' d='M22 15h20c8.5 0 15.2 5.4 17.2 13l3.2 12c1.7 6.5-3 13-9.4 13-3.8 0-7-1.9-9-5l-3.6-5.5H23.6L20 48c-2 3.1-5.2 5-9 5-6.4 0-11.1-6.5-9.4-13l3.2-12C6.8 20.4 13.5 15 22 15z'/%3E%3C/svg%3E">
+<title>Журнал игр</title>
+</head>
+<body>
+
+<header class="win" style="position:relative">
+  <button class="gear" id="gearBtn" aria-label="Настройки синхронизации">⚙</button>
+  <button class="gear resbtn" id="resultsBtn" aria-label="Итоги по годам">▦</button>
+  <h1>Журнал игр</h1>
+  <div class="subtitle">беклог · прогресс · история прохождений</div>
+  <div class="stats">
+    <div class="stat playing"><b id="stPlaying">0</b><span>играю</span></div>
+    <div class="stat backlog"><b id="stBacklog">0</b><span>беклог</span></div>
+    <div class="stat done"><b id="stDone">0</b><span>пройдено</span></div>
+  </div>
+  <div class="fstatus" id="fstatus" hidden></div>
+  <div class="sync" id="syncPanel" hidden>
+    <select id="langSel" aria-label="Language">
+      <option value="ru">Русский</option>
+      <option value="en">English</option>
+    </select>
+    <input id="gsUrl" placeholder="Google Apps Script URL (…/exec)" autocomplete="off">
+    <div class="hint" style="text-align:center" id="orGist">— или через GitHub Gist —</div>
+    <input id="ghToken" type="password" placeholder="GitHub token" autocomplete="off">
+    <input id="ghGist" placeholder="Gist ID" autocomplete="off">
+    <div class="row2">
+      <button class="btn gold" id="syncConnect">Подключить</button>
+      <button class="btn" id="syncOff">Отключить</button>
+    </div>
+    <div class="hint" id="syncHint"></div>
+    <div class="row2">
+      <button class="btn" id="csvBtn">Импорт CSV</button>
+      <button class="btn" id="bakBtn">Бэкап</button>
+      <button class="btn" id="resBtn">Восстановить</button>
+    </div>
+    <button class="btn" id="nodataBtn">Игры без данных Playnite</button>
+    <button class="btn" id="resetNoMergeBtn" hidden></button>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="tab active" data-f="all">Все</button>
+  <button class="tab" data-f="playing">Играю</button>
+  <button class="tab" data-f="backlog">Беклог</button>
+  <button class="tab" data-f="done">Пройдено</button>
+  <button class="tab" data-f="dropped">Брошено</button>
+  <button class="tab" data-f="catalog">Каталог</button>
+  <button class="tab" data-f="fav">⚑ Избранное</button>
+</nav>
+
+<div class="bar mainbar">
+  <span class="searchwrap">
+    <input id="search" type="search" placeholder="Поиск по играм…" autocomplete="off">
+    <button id="clearSearch" aria-label="Очистить" hidden>✕</button>
+  </span>
+  <button class="btn gold" id="addBtn">+ Добавить</button>
+</div>
+
+<div class="bar sortrow"><select id="sortSel"></select></div>
+
+<main id="list"></main>
+
+<input type="file" id="csvFile" accept=".csv,text/csv">
+<input type="file" id="jsonFile" accept=".json,application/json">
+<datalist id="platformList"></datalist>
+<datalist id="sourceList"></datalist>
+<div class="results" id="resultsWin" hidden>
+  <div class="win rwin">
+    <div class="rtop">
+      <h1 id="resTitle">Итоги</h1>
+      <button class="rclose" id="resClose" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="rperiods" id="resPeriods"></div>
+    <div class="rbody" id="resBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="./main.ts"></script>
+</body>
+</html>

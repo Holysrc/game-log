@@ -1,7 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// APP_DIR: folder served to the browser (repo root by default, dist/ for build tests)
-const appDir = process.env.APP_DIR || ".";
+// APP_DIR: folder served to the browser. Default is the Vite build output —
+// run `npm run build` first (npm pretest does it automatically).
+const appDir = process.env.APP_DIR || "dist";
 const port = 8123;
 
 export default defineConfig({

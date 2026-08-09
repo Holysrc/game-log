@@ -1,0 +1,109 @@
+// Dictionary + language state. Every user-facing string lives here (§3).
+var LKEY = "gamelog-lang";
+
+export var TR: Record<string, Record<string, string>> = {
+ru:{
+  st_backlog:"Беклог",st_playing:"Играю",st_done:"Пройдено",st_dropped:"Брошено",
+  title:"Журнал игр",subtitle:"беклог · прогресс · история прохождений",
+  stat_playing:"играю",stat_backlog:"беклог",stat_done:"пройдено",
+  tab_all:"Все",tab_catalog:"Каталог",tab_fav:"⚑ Избранное",fav_on:"⚑ В избранное",fav_off:"⚑ Убрать из избранного",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
+  dice_bar:"🎲 Во что поиграть? Пусть решит судьба",dice_aria:"Случайная игра из беклога",
+  dice_none:"Беклог пуст — вот это достижение!",dice_pick:"Судьба выбрала: ",
+  long_ago:"Давно",ago_short:"давно",done_old:"Пройдено давно",replayed:"+ Перепройдено",
+  add_year:"+ Прошёл в…",remove_from:"Убрать из «{y}»",del:"Удалить",times:" раз",
+  confirm_del:"Удалить «{n}» полностью, со всей историей?",
+  no_runs_left:"Прохождений не осталось — игра вернулась в беклог",
+  added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",name_ph:"Название игры",rel_ph:"Год выхода",genres_ph:"Жанры",series_ph:"Серия",nodata:"Игры без данных Playnite",
+  sort_default:"⇅ Без сортировки",sort_name:"По алфавиту",sort_cs:"По оценке сообщества",
+  sort_rating:"По моей оценке",sort_rel:"По году выхода",sort_time:"По наигранному",
+  merge_with:"⇆ Объединить с «{n}»",merge_keep:"Оставить какую:",cancel:"Отмена",nomerge_done:"Понял, эта пара — не дубли. Вернуть можно в настройках",reset_nomerge:"Вернуть скрытые пары дублей",ser_games:" игр",ser_runs:" прохождений",ser_done:" пройдено",nomerge_reset:"Скрытые пары снова будут предлагаться",merged:"Объединено: ",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
+  h:" ч",min:" мин",cs_title:"Оценка сообщества Playnite",
+  empty:"Пока пусто.",empty_search:"Ничего не найдено. Нажми «+ Добавить», чтобы внести эту игру.",
+  added_backlog:"Добавлено в беклог: ",already:"уже в списке",
+  sync:"синк",syncing:"синхронизация…",offline:"офлайн · сохранено локально",offline_local:"офлайн · локально",
+  storage_warn:"Хранилище недоступно — в этом окне данные не сохранятся",
+  gist_created:"Gist создан. Скопируй его ID на другие устройства",
+  connected:"Подключено — синхронизирую",connected_drive:"Подключено к Google Drive",
+  need_token:"Вставь Apps Script URL или токен GitHub",bad_url:"URL должен начинаться с https://script.google.com/ и кончаться на /exec",
+  sync_off:"Синхронизация отключена, данные остались локально",
+  gist_fail:"Не вышло создать gist: ",
+  imp_none:"В файле не нашлось строк с играми",imp_nocol:"Не нашёл колонку с названием (Name) — проверь экспорт",
+  imp_done:"Импорт: добавлено ",imp_upd:", обновлено ",imp_fail:"Не удалось разобрать CSV: ",
+  bak_done:"Файл скачан — положи его в надёжное место",restored:"Восстановлено из ",games_w:" игр",
+  not_backup:"Это не файл журнала: ",
+  ph_gs:"Google Apps Script URL (…/exec)",or_gist:"— или через GitHub Gist —",
+  ph_token:"GitHub token (права: только gist)",ph_gist:"Gist ID (оставь пустым — создам новый)",
+  connect:"Подключить",disconnect:"Отключить",csv:"Импорт CSV из Playnite",backup:"Бэкап",restore:"Восстановить",
+  hint:"Заполни что-то одно. Google-вариант: script.google.com → вставить скрипт → Deploy → Web app → доступ «Anyone» → скопировать URL. На втором устройстве вставь тот же URL или токен+ID.",
+  res_title:"Итоги",res_btn_aria:"Итоги по годам",res_close:"Закрыть",
+  res_alltime:"Всё время",res_beaten:"Пройдено игр",res_runs:"Прохождений",
+  res_hours:"Часов в играх",res_avg:"Средняя оценка",res_top_genres:"Топ жанров",
+  res_top_platforms:"Топ платформ",res_launchers:"По лончерам",
+  res_goty:"Игра года",res_goty_all:"Игра эпохи",res_longest:"Самая длинная",
+  res_series:"Серия года",res_series_all:"Главная серия",
+  res_empty:"За этот период прохождений нет",res_no_data:"—",
+  rating_aria:"Оценка {r} из 5",settings_aria:"Настройки синхронизации",
+  bad_format:"не тот формат",file_desc:"Данные журнала",autosave:"автосохранение",not_dupes:"Не дубли",
+  gh_bad_token:" — токен не подошёл"
+},
+en:{
+  st_backlog:"Backlog",st_playing:"Playing",st_done:"Beaten",st_dropped:"Dropped",
+  title:"Game Log",subtitle:"backlog · progress · completion history",
+  stat_playing:"playing",stat_backlog:"backlog",stat_done:"beaten",
+  tab_all:"All",tab_catalog:"Catalog",tab_fav:"⚑ Favorites",fav_on:"⚑ Add to favorites",fav_off:"⚑ Remove from favorites",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",
+  dice_bar:"🎲 What to play? Let fate decide",dice_aria:"Random game from backlog",
+  dice_none:"Backlog is empty — what an achievement!",dice_pick:"Fate has chosen: ",
+  long_ago:"Way back",ago_short:"way back",done_old:"Beaten way back",replayed:"+ Replayed",
+  add_year:"+ Beaten in…",remove_from:"Remove from “{y}”",del:"Delete",times:" times",
+  confirm_del:"Delete “{n}” entirely, with all history?",
+  no_runs_left:"No completions left — game returned to backlog",
+  added_to:"added to ",platform:"Platform",launcher:"Launcher",name_ph:"Game title",rel_ph:"Release year",genres_ph:"Genres",series_ph:"Series",nodata:"Games without Playnite data",
+  sort_default:"⇅ Default order",sort_name:"Alphabetical",sort_cs:"By community score",
+  sort_rating:"By my rating",sort_rel:"By release year",sort_time:"By time played",
+  merge_with:"⇆ Merge with “{n}”",merge_keep:"Keep which one:",cancel:"Cancel",nomerge_done:"Got it, not a duplicate. Restore anytime in settings",reset_nomerge:"Restore hidden duplicate pairs",ser_games:" games",ser_runs:" playthroughs",ser_done:" beaten",nomerge_reset:"Hidden pairs will be suggested again",merged:"Merged: ",note_ph:"Game note — thoughts, where you stopped, what to remember…",
+  h:" h",min:" min",cs_title:"Playnite community score",
+  empty:"Nothing here yet.",empty_search:"Nothing found. Tap “+ Add” to add this game.",
+  added_backlog:"Added to backlog: ",already:"is already in the list",
+  sync:"sync",syncing:"syncing…",offline:"offline · saved locally",offline_local:"offline · local",
+  storage_warn:"Storage unavailable — data won't persist in this window",
+  gist_created:"Gist created. Copy its ID to your other devices",
+  connected:"Connected — syncing",connected_drive:"Connected to Google Drive",
+  need_token:"Paste an Apps Script URL or a GitHub token",bad_url:"URL must start with https://script.google.com/ and end with /exec",
+  sync_off:"Sync disabled, data kept locally",
+  gist_fail:"Couldn't create gist: ",
+  imp_none:"No game rows found in the file",imp_nocol:"Couldn't find the Name column — check the export",
+  imp_done:"Import: added ",imp_upd:", updated ",imp_fail:"Couldn't parse CSV: ",
+  bak_done:"File downloaded — keep it somewhere safe",restored:"Restored from ",games_w:" games",
+  not_backup:"This is not a log file: ",
+  ph_gs:"Google Apps Script URL (…/exec)",or_gist:"— or via GitHub Gist —",
+  ph_token:"GitHub token (scope: gist only)",ph_gist:"Gist ID (leave empty — I'll create one)",
+  connect:"Connect",disconnect:"Disconnect",csv:"Import Playnite CSV",backup:"Backup",restore:"Restore",
+  hint:"Fill in just one. Google option: script.google.com → paste the script → Deploy → Web app → access “Anyone” → copy the URL. On the second device paste the same URL or token+ID.",
+  res_title:"Results",res_btn_aria:"Yearly results",res_close:"Close",
+  res_alltime:"All time",res_beaten:"Games beaten",res_runs:"Playthroughs",
+  res_hours:"Hours played",res_avg:"Average rating",res_top_genres:"Top genres",
+  res_top_platforms:"Top platforms",res_launchers:"By launcher",
+  res_goty:"Game of the year",res_goty_all:"Game of the era",res_longest:"Longest game",
+  res_series:"Series of the year",res_series_all:"Top series",
+  res_empty:"No completions in this period",res_no_data:"—",
+  rating_aria:"Rating {r} of 5",settings_aria:"Sync settings",
+  bad_format:"wrong format",file_desc:"Game log data",autosave:"autosave",not_dupes:"Not duplicates",
+  gh_bad_token:" — token was rejected"
+}};
+
+export var lang = "en";
+try { lang = localStorage.getItem(LKEY) || "en"; } catch (e) {}
+if (!TR[lang]) lang = "ru";
+
+export function setLang(l: string): void {
+  lang = l;
+  try { localStorage.setItem(LKEY, lang); } catch (err) {}
+}
+
+export function t(k: string): string {
+  return (TR[lang] && TR[lang][k]) !== undefined ? TR[lang][k] : (TR.ru[k] || k);
+}
+
+export function stLabel(s: string): string {
+  return t("st_" + s);
+}
