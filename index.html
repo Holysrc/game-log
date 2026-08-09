@@ -252,6 +252,7 @@
     background:rgba(6,10,34,.7);border:1.5px solid var(--border-dim);border-radius:8px;
     color:var(--text);padding:7px 8px;font-size:.85rem;
   }
+  .actions select.gold{border-color:var(--gold);color:var(--gold)}
   .actions .del{border-color:var(--danger);color:var(--danger);margin-left:auto}
 
   .empty{color:var(--text-dim);text-align:center;padding:26px 10px;font-size:.9rem}
@@ -307,6 +308,7 @@
   <button class="tab" data-f="backlog">Беклог</button>
   <button class="tab" data-f="done">Пройдено</button>
   <button class="tab" data-f="dropped">Брошено</button>
+  <button class="tab" data-f="catalog">Каталог</button>
 </nav>
 
 <div class="bar">
@@ -337,11 +339,11 @@ ru:{
   st_backlog:"Беклог",st_playing:"Играю",st_done:"Пройдено",st_dropped:"Брошено",
   title:"Журнал игр",subtitle:"беклог · прогресс · история прохождений",
   stat_playing:"играю",stat_backlog:"беклог",stat_done:"пройдено",
-  tab_all:"Все",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
+  tab_all:"Все",tab_catalog:"Каталог",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
   dice_bar:"🎲 Во что поиграть? Пусть решит судьба",dice_aria:"Случайная игра из беклога",
   dice_none:"Беклог пуст — вот это достижение!",dice_pick:"Судьба выбрала: ",
   long_ago:"Давно",ago_short:"давно",done_old:"Пройдено давно",replayed:"+ Перепройдено",
-  add_year:"+ год…",remove_from:"Убрать из «{y}»",del:"Удалить",times:" раз",
+  add_year:"+ Прошёл в…",remove_from:"Убрать из «{y}»",del:"Удалить",times:" раз",
   confirm_del:"Удалить «{n}» полностью, со всей историей?",
   no_runs_left:"Прохождений не осталось — игра вернулась в беклог",
   added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",rel_ph:"Год выхода",genres_ph:"Жанры",series_ph:"Серия",nodata:"Игры без данных Playnite",
@@ -371,11 +373,11 @@ en:{
   st_backlog:"Backlog",st_playing:"Playing",st_done:"Beaten",st_dropped:"Dropped",
   title:"Game Log",subtitle:"backlog · progress · completion history",
   stat_playing:"playing",stat_backlog:"backlog",stat_done:"beaten",
-  tab_all:"All",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",
+  tab_all:"All",tab_catalog:"Catalog",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",
   dice_bar:"🎲 What to play? Let fate decide",dice_aria:"Random game from backlog",
   dice_none:"Backlog is empty — what an achievement!",dice_pick:"Fate has chosen: ",
   long_ago:"Way back",ago_short:"way back",done_old:"Beaten way back",replayed:"+ Replayed",
-  add_year:"+ year…",remove_from:"Remove from “{y}”",del:"Delete",times:" times",
+  add_year:"+ Beaten in…",remove_from:"Remove from “{y}”",del:"Delete",times:" times",
   confirm_del:"Delete “{n}” entirely, with all history?",
   no_runs_left:"No completions left — game returned to backlog",
   added_to:"added to ",platform:"Platform",launcher:"Launcher",rel_ph:"Release year",genres_ph:"Genres",series_ph:"Series",nodata:"Games without Playnite data",
@@ -635,14 +637,11 @@ function cardHTML(g,ctx){
     if(g.years.indexOf(0)===-1){
       actions+='<button class="btn" data-act="status" data-s="done" data-old="1">'+t("done_old")+'</button>';
     }
-    if(g.status==="done"&&g.years.indexOf(cy)===-1){
-      actions+='<button class="btn gold" data-act="addyear">'+t("replayed")+' ('+cy+')</button>';
-    }
     // добавить прохождение в любом году
     var missing=[];
     for(var ay=cy;ay>=2018;ay--)if(g.years.indexOf(ay)===-1)missing.push(ay);
     if(missing.length){
-      actions+='<select data-act="addyearsel">'
+      actions+='<select data-act="addyearsel" class="gold">'
         +'<option value="">'+t("add_year")+'</option>'
         +missing.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
         +'</select>';
@@ -658,8 +657,13 @@ function cardHTML(g,ctx){
         +'value="'+(g.oldCount||1)+'">'+t("times");
     }
     actions+='<button class="btn" data-act="rmyear">'+t("remove_from").replace("{y}",yLabel(ctx))+'</button>';
-    if(g.years.indexOf(cy)===-1){
-      actions+='<button class="btn gold" data-act="addyear">'+t("replayed")+' ('+cy+')</button>';
+    var missing2=[];
+    for(var ay2=cy;ay2>=2018;ay2--)if(g.years.indexOf(ay2)===-1)missing2.push(ay2);
+    if(missing2.length){
+      actions+='<select data-act="addyearsel" class="gold">'
+        +'<option value="">'+t("add_year")+'</option>'
+        +missing2.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
+        +'</select>';
     }
   }
   actions+='<span class="sugwrap"><input class="platinput" data-act="plat" placeholder="'+t("platform")+'" '
@@ -766,7 +770,7 @@ function render(){
     return !q||norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")+" "+(g.series||"")).indexOf(q)!==-1;
   }
   var bySearch=state.games.filter(matches);
-  var shown=bySearch.filter(function(g){return filter==="all"||g.status===filter;});
+  var shown=bySearch.filter(function(g){return filter==="all"||filter==="catalog"||g.status===filter;});
 
   // платформы и лончеры для подсказок: стандартные + те, что уже введены
   var plats={},srcs={};
@@ -821,7 +825,7 @@ function render(){
     if(filter==="backlog"&&shown.length){
       html+='<button class="dicebar" data-dice>'+t("dice_bar")+'</button>';
     }
-    html+=section(filter,stLabel(filter),shown,null);
+    html+=section(filter,filter==="catalog"?t("tab_catalog"):stLabel(filter),shown,null);
   }
   document.getElementById("list").innerHTML=html;
 }
@@ -1298,7 +1302,7 @@ function applyLang(){
   statSpans[2].textContent=t("stat_done");
   document.querySelectorAll(".tab").forEach(function(tb){
     var f=tb.dataset.f;
-    tb.textContent=f==="all"?t("tab_all"):stLabel(f);
+    tb.textContent=f==="all"?t("tab_all"):(f==="catalog"?t("tab_catalog"):stLabel(f));
   });
   document.getElementById("search").placeholder=t("search_ph");
   document.getElementById("addBtn").textContent=t("add_btn");
