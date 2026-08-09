@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23182566'/%3E%3Crect x='2' y='2' width='60' height='60' rx='10' fill='none' stroke='%23c9d3ee' stroke-width='3'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle'%3E%F0%9F%8E%AE%3C/text%3E%3C/svg%3E">
 <title>Журнал игр</title>
 <style>
   :root{
@@ -330,7 +331,7 @@ ru:{
   not_backup:"Это не файл журнала: ",
   ph_gs:"Google Apps Script URL (…/exec)",or_gist:"— или через GitHub Gist —",
   ph_token:"GitHub token (права: только gist)",ph_gist:"Gist ID (оставь пустым — создам новый)",
-  connect:"Подключить",disconnect:"Отключить",csv:"Импорт CSV",backup:"Бэкап",restore:"Восстановить",
+  connect:"Подключить",disconnect:"Отключить",csv:"Импорт CSV из Playnite",backup:"Бэкап",restore:"Восстановить",
   hint:"Заполни что-то одно. Google-вариант: script.google.com → вставить скрипт → Deploy → Web app → доступ «Anyone» → скопировать URL. На втором устройстве вставь тот же URL или токен+ID."
 },
 en:{
@@ -361,11 +362,11 @@ en:{
   not_backup:"This is not a log file: ",
   ph_gs:"Google Apps Script URL (…/exec)",or_gist:"— or via GitHub Gist —",
   ph_token:"GitHub token (scope: gist only)",ph_gist:"Gist ID (leave empty — I'll create one)",
-  connect:"Connect",disconnect:"Disconnect",csv:"Import CSV",backup:"Backup",restore:"Restore",
+  connect:"Connect",disconnect:"Disconnect",csv:"Import Playnite CSV",backup:"Backup",restore:"Restore",
   hint:"Fill in just one. Google option: script.google.com → paste the script → Deploy → Web app → access “Anyone” → copy the URL. On the second device paste the same URL or token+ID."
 }};
-var lang="ru";
-try{lang=localStorage.getItem(LKEY)||"ru";}catch(e){}
+var lang="en";
+try{lang=localStorage.getItem(LKEY)||"en";}catch(e){}
 if(!TR[lang])lang="ru";
 function t(k){return (TR[lang]&&TR[lang][k])!==undefined?TR[lang][k]:(TR.ru[k]||k);}
 function stLabel(s){return t("st_"+s);}
