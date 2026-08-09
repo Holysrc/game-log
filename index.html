@@ -169,8 +169,10 @@
   @keyframes blink{50%{opacity:.25}}
   @media (prefers-reduced-motion:reduce){.card.playing .cursor{animation:none}}
 
-  .card .row{display:flex;align-items:center;gap:5px 8px;flex-wrap:wrap}
-  .card .name{flex:1 1 auto;min-width:55%;overflow-wrap:anywhere;font-size:.98rem}
+  .card .row{display:flex;align-items:flex-start;gap:8px}
+  .card .name{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-size:.98rem}
+  .card .row .badge{margin-left:auto;flex-shrink:0}
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
   .card.done .name{color:#d9e2f5}
   .card.dropped .name{color:var(--gray);text-decoration:line-through;text-decoration-color:rgba(138,143,156,.6)}
   .badge{
@@ -655,14 +657,17 @@ function cardHTML(g,ctx){
   }
   var metaView=metaParts.length?'<div class="meta">'+metaParts.join(" · ")+'</div>':"";
 
+  var chips="";
+  if(g.platform)chips+='<span class="plat">'+esc(g.platform)+'</span>';
+  if(g.source)chips+='<span class="src">'+esc(g.source)+'</span>';
+  chips+=histChip+noteChip;
+  var chipsView=chips?'<div class="chips">'+chips+'</div>':"";
+
   return '<div class="card win '+g.status+(open?" open":"")+'" data-id="'+g.id+'" data-ctx="'+(ctx===null?"s":ctx)+'">'
     +'<span class="cursor">▶</span>'
     +'<div class="row"><span class="name">'+esc(g.name)+'</span>'
-    +(g.platform?'<span class="plat">'+esc(g.platform)+'</span>':"")
-    +(g.source?'<span class="src">'+esc(g.source)+'</span>':"")
-    +histChip
-    +noteChip
     +badge+'</div>'
+    +chipsView
     +metaView
     +starsView
     +'<div class="actions">'+actions+'</div></div>';
