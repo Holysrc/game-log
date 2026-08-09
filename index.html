@@ -240,6 +240,7 @@
   }
   .actions .platinput:focus{outline:none;border-color:var(--gold)}
   .actions .oldcnt{width:60px;text-align:center}
+  .actions .namefield{width:100%}
 
   .stars{margin-top:3px;font-size:.72rem;letter-spacing:.15em;color:var(--gold);
     text-shadow:0 1px 2px rgba(0,0,0,.5)}
@@ -371,7 +372,7 @@ ru:{
   add_year:"+ Прошёл в…",remove_from:"Убрать из «{y}»",del:"Удалить",times:" раз",
   confirm_del:"Удалить «{n}» полностью, со всей историей?",
   no_runs_left:"Прохождений не осталось — игра вернулась в беклог",
-  added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",rel_ph:"Год выхода",genres_ph:"Жанры",series_ph:"Серия",nodata:"Игры без данных Playnite",
+  added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",name_ph:"Название игры",rel_ph:"Год выхода",genres_ph:"Жанры",series_ph:"Серия",nodata:"Игры без данных Playnite",
   sort_default:"⇅ Без сортировки",sort_name:"По алфавиту",sort_cs:"По оценке сообщества",
   sort_rating:"По моей оценке",sort_rel:"По году выхода",sort_time:"По наигранному",
   merge_with:"⇆ Объединить с «{n}»",merge_keep:"Оставить какую:",cancel:"Отмена",nomerge_done:"Понял, эта пара — не дубли. Вернуть можно в настройках",reset_nomerge:"Вернуть скрытые пары дублей",ser_games:" игр",ser_runs:" прохождений",ser_done:" пройдено",nomerge_reset:"Скрытые пары снова будут предлагаться",merged:"Объединено: ",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
@@ -405,7 +406,7 @@ en:{
   add_year:"+ Beaten in…",remove_from:"Remove from “{y}”",del:"Delete",times:" times",
   confirm_del:"Delete “{n}” entirely, with all history?",
   no_runs_left:"No completions left — game returned to backlog",
-  added_to:"added to ",platform:"Platform",launcher:"Launcher",rel_ph:"Release year",genres_ph:"Genres",series_ph:"Series",nodata:"Games without Playnite data",
+  added_to:"added to ",platform:"Platform",launcher:"Launcher",name_ph:"Game title",rel_ph:"Release year",genres_ph:"Genres",series_ph:"Series",nodata:"Games without Playnite data",
   sort_default:"⇅ Default order",sort_name:"Alphabetical",sort_cs:"By community score",
   sort_rating:"By my rating",sort_rel:"By release year",sort_time:"By time played",
   merge_with:"⇆ Merge with \u201c{n}\u201d",merge_keep:"Keep which one:",cancel:"Cancel",nomerge_done:"Got it, not a duplicate. Restore anytime in settings",reset_nomerge:"Restore hidden duplicate pairs",ser_games:" games",ser_runs:" playthroughs",ser_done:" beaten",nomerge_reset:"Hidden pairs will be suggested again",merged:"Merged: ",note_ph:"Game note — thoughts, where you stopped, what to remember…",
@@ -663,6 +664,8 @@ function cardHTML(g,ctx){
 
   var actions="";
   if(open){
+  actions+='<input class="platinput namefield" data-act="rename" placeholder="'+t("name_ph")+'" '
+    +'value="'+esc(g.name)+'">';
   if(ctx===null){
     actions+=STATUS_KEYS.filter(function(s){return s!==g.status&&s!=="done";})
       .map(function(s){
@@ -1140,11 +1143,18 @@ document.getElementById("list").addEventListener("keydown",function(e){
 });
 document.getElementById("list").addEventListener("change",function(e){
   var act=e.target.dataset.act;
-  if(["year","plat","src","oldcount","addyearsel","note","rel","genres","series"].indexOf(act)===-1)return;
+  if(["year","plat","src","oldcount","addyearsel","note","rel","genres","series","rename"].indexOf(act)===-1)return;
   var card=e.target.closest(".card");
   var g=state.games.find(function(x){return x.id===+card.dataset.id;});
   if(!g)return;
-  if(act==="note"){g.note=e.target.value.trim()||null;save();render();}
+  if(act==="rename"){
+    var nn=e.target.value.trim();
+    if(!nn){render();return;} // пустое имя — откат
+    var clash=state.games.find(function(x){return x.id!==g.id&&norm(x.name)===norm(nn);});
+    if(clash){toast("«"+clash.name+"» "+t("already")+" ("+stLabel(clash.status)+")");render();return;}
+    g.name=nn;save();render();
+  }
+  else if(act==="note"){g.note=e.target.value.trim()||null;save();render();}
   else if(act==="year"){
     var oldY=card.dataset.ctx==="s"?null:+card.dataset.ctx;
     var newY=+e.target.value;
