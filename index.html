@@ -109,6 +109,11 @@
 
   /* ---- search + add ---- */
   .bar{display:flex;gap:8px;margin-bottom:10px}
+  .bar.mainbar{
+    position:sticky;top:0;z-index:7;
+    background:var(--bg);
+    padding:8px 0;margin:0 0 4px;
+  }
   .bar input{
     flex:1;background:rgba(6,10,34,.7);border:1.5px solid var(--border-dim);border-radius:8px;
     color:var(--text);padding:9px 12px;font-size:.95rem;
@@ -142,7 +147,7 @@
   /* ---- list ---- */
   .sec{margin-top:6px}
   .yearhead{
-    position:sticky;top:0;z-index:5;
+    position:sticky;top:56px;z-index:5;
     background:var(--bg);
     display:flex;align-items:baseline;gap:8px;
     margin:0 0 7px;padding:12px 2px 7px;
@@ -334,7 +339,7 @@
   <button class="tab" data-f="catalog">Каталог</button>
 </nav>
 
-<div class="bar">
+<div class="bar mainbar">
   <span class="searchwrap">
     <input id="search" type="search" placeholder="Поиск по играм…" autocomplete="off">
     <button id="clearSearch" aria-label="Очистить" hidden>✕</button>
@@ -676,11 +681,13 @@ function cardHTML(g,ctx){
     for(var ay=cy;ay>=2000;ay--)if(g.years.indexOf(ay)===-1)missing.push(ay);
     var oldOpt=g.years.indexOf(0)===-1?'<option value="old">'+t("long_ago")+'</option>':"";
     if(missing.length||oldOpt){
-      actions+='<select data-act="addyearsel" class="gold">'
+      actions+='<span class="mpair">'
+        +'<input class="platinput oldcnt" data-role="precount" type="number" min="1" max="99" value="1" title="×'+t("times").trim()+'">'
+        +'<select data-act="addyearsel" class="gold">'
         +'<option value="">'+t("add_year")+'</option>'
         +missing.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
         +oldOpt
-        +'</select>';
+        +'</select></span>';
     }
   }else{
     var yearOpts='<option value="0"'+(+ctx===0?" selected":"")+'>'+t("long_ago")+'</option>';
@@ -816,7 +823,9 @@ function render(){
   var noData=query.trim().toLowerCase()==="#nodata";
   function matches(g){
     if(noData)return !g.source&&!g.genres&&!g.cs;
-    return !q||norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")+" "+(g.series||"")).indexOf(q)!==-1;
+    if(!q)return true;
+    if(q.length===1)return norm(g.name).charAt(0)===q; // одна буква — по первой букве названия
+    return norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")+" "+(g.series||"")).indexOf(q)!==-1;
   }
   var bySearch=state.games.filter(matches);
   var shown=bySearch.filter(function(g){return filter==="all"||filter==="catalog"||g.status===filter;});
@@ -892,6 +901,7 @@ function render(){
     html+=section(filter,filter==="catalog"?t("tab_catalog"):stLabel(filter),shown,null);
   }
   document.getElementById("list").innerHTML=html;
+
 }
 
 /* ================= events ================= */
@@ -906,15 +916,33 @@ var searchTimer=null;
 function syncClearBtn(){
   document.getElementById("clearSearch").hidden=!document.getElementById("search").value;
 }
+function clearAnchor(){
+  // первая карточка отфильтрованного списка — к ней вернёмся после очистки
+  var c=document.querySelector("#list .card");
+  return c?{id:c.dataset.id,ctx:c.dataset.ctx}:null;
+}
+function restoreAnchor(a){
+  if(!a)return;
+  var el=document.querySelector('.card[data-id="'+a.id+'"][data-ctx="'+a.ctx+'"]')
+    ||document.querySelector('.card[data-id="'+a.id+'"]');
+  if(el)scrollToCard(el);
+}
 document.getElementById("search").addEventListener("input",function(e){
   syncClearBtn();
   clearTimeout(searchTimer);
-  searchTimer=setTimeout(function(){query=e.target.value;render();},150);
+  searchTimer=setTimeout(function(){
+    var wasQ=query,nowQ=e.target.value;
+    var a=(wasQ&&!nowQ.trim())?clearAnchor():null;
+    query=nowQ;render();
+    restoreAnchor(a);
+  },150);
 });
 document.getElementById("clearSearch").addEventListener("click",function(){
   var inp=document.getElementById("search");
+  var a=query?clearAnchor():null;
   inp.value="";query="";
   syncClearBtn();render();
+  restoreAnchor(a);
   inp.focus();
 });
 
@@ -998,6 +1026,25 @@ function scrollToCard(el){
   })();
 }
 
+function renderKeepScroll(anchorEl){
+  var aid=null,actx=null,top=0;
+  if(anchorEl&&anchorEl.dataset){
+    aid=anchorEl.dataset.id;actx=anchorEl.dataset.ctx;
+    top=anchorEl.getBoundingClientRect().top;
+  }
+  render();
+  if(aid!=null){
+    var el=document.querySelector('.card[data-id="'+aid+'"][data-ctx="'+actx+'"]');
+    if(el)window.scrollBy(0,el.getBoundingClientRect().top-top);
+  }
+}
+function siblingCard(card){
+  var n=card.nextElementSibling;
+  if(n&&n.classList&&n.classList.contains("card"))return n;
+  var p=card.previousElementSibling;
+  if(p&&p.classList&&p.classList.contains("card"))return p;
+  return null;
+}
 function patchCardByKey(k){
   if(!k)return;
   var parts=k.split("@");
@@ -1070,7 +1117,8 @@ document.getElementById("list").addEventListener("click",function(e){
     g.status=s;
     if(s==="done")addYear(g,e.target.dataset.old?0:cy);
     // историю прохождений при смене статуса НЕ трогаем
-    save();render();return;
+    var anchor2=siblingCard(card);
+    save();renderKeepScroll(anchor2);return;
   }
   if(act==="addyear"){
     addYear(g,cy);
@@ -1193,9 +1241,13 @@ document.getElementById("list").addEventListener("change",function(e){
     if(raw){
       var v=raw==="old"?0:+raw;
       addYear(g,v);
+      var pc=card.querySelector('[data-role=precount]');
+      var pcv=pc?Math.max(1,Math.min(99,parseInt(pc.value,10)||1)):1;
+      if(pcv>1){g.counts=g.counts||{};g.counts[v]=pcv;}
       if(g.status==="backlog"||g.status==="playing")g.status="done";
-      save();render();
-      toast("«"+g.name+"» "+t("added_to")+yLabel(v));
+      var anchor=siblingCard(card);
+      save();renderKeepScroll(anchor);
+      toast("«"+g.name+"» "+t("added_to")+yLabel(v)+(pcv>1?" ×"+pcv:""));
     }
   }
   else if(act==="plat"){g.platform=e.target.value.trim()||null;save();render();}
@@ -1478,6 +1530,7 @@ function applyLang(){
   document.getElementById("langSel").value=lang;
   render();
 }
+
 document.getElementById("sortSel").addEventListener("change",function(e){
   sortMode=e.target.value;
   try{localStorage.setItem(SORTKEY,sortMode);}catch(err){}
