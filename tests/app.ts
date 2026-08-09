@@ -28,7 +28,10 @@ export const L = {
     resBeaten: "Пройдено игр",
     resRuns: "Прохождений",
     resLongest: "Самая длинная",
-    resSeriesAll: "Главная серия"
+    resSeriesAll: "Главная серия",
+    diceTitle: "Кубик судьбы",
+    dicePool: "В пуле: ",
+    diceEmpty: "Пул пуст — ослабь фильтры"
   },
   en: {
     title: "Game Log",
@@ -53,7 +56,10 @@ export const L = {
     resBeaten: "Games beaten",
     resRuns: "Playthroughs",
     resLongest: "Longest game",
-    resSeriesAll: "Top series"
+    resSeriesAll: "Top series",
+    diceTitle: "Dice of fate",
+    dicePool: "In the pool: ",
+    diceEmpty: "Pool is empty — loosen the filters"
   }
 } as const;
 
@@ -78,7 +84,11 @@ export const test = base.extend<Fx>({
       });
       page.on("pageerror", (err) => issues.push(`pageerror: ${err.message}`));
       await use(issues);
-      const allowed: RegExp[] = (page as any).__allowedConsole || [];
+      const allowed: RegExp[] = [
+        // harness-induced: config blocks SW registration in non-offline tests
+        /Service Worker registration blocked by Playwright/,
+        ...((page as any).__allowedConsole || [])
+      ];
       const real = issues.filter((i) => !allowed.some((re) => re.test(i)));
       expect(real, "console must be clean (§7)").toEqual([]);
     },

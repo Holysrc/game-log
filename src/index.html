@@ -71,6 +71,28 @@
 <input type="file" id="jsonFile" accept=".json,application/json">
 <datalist id="platformList"></datalist>
 <datalist id="sourceList"></datalist>
+<div class="dicewin" id="diceWin" hidden>
+  <div class="win dwin">
+    <div class="rtop">
+      <h2 class="rtitle dtitle" id="dTitle">Кубик судьбы</h2>
+      <button class="rclose" id="diceClose" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="dform">
+      <label class="dfield"><span id="dGenreLbl">Жанр</span><select id="dGenre"></select></label>
+      <label class="dfield"><span id="dCsLbl">Оценка сообщества</span><select id="dCs"></select></label>
+      <label class="dfield"><span id="dSeriesLbl">Серия</span><select id="dSeries"></select></label>
+      <label class="dcheck"><input type="checkbox" id="dLib"><span id="dLibLbl">Есть в библиотеке</span></label>
+      <label class="dcheck"><input type="checkbox" id="dFresh"><span id="dFreshLbl">Только нетронутые</span></label>
+    </div>
+    <div class="dpool" id="dPool"></div>
+    <div class="drow">
+      <button class="btn gold" id="diceRoll">🎲 Бросить</button>
+      <button class="btn" id="diceQuick">Без фильтров</button>
+    </div>
+    <button class="btn dreset" id="diceReset">Сбросить фильтры</button>
+  </div>
+</div>
+
 <div class="results" id="resultsWin" hidden>
   <div class="win rwin">
     <div class="rtop">

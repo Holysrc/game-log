@@ -207,6 +207,7 @@ function cardHTML(g: Game, ctx: number | null): string {
 }
 
 export function render(): void {
+  var t0 = performance.now();
   var c = counts();
   document.getElementById("stPlaying")!.textContent = c.playing;
   document.getElementById("stBacklog")!.textContent = c.backlog;
@@ -298,6 +299,7 @@ export function render(): void {
     html += section(filter, filter === "catalog" ? t("tab_catalog") : (filter === "fav" ? t("tab_fav") : stLabel(filter)), shown, null);
   }
   document.getElementById("list")!.innerHTML = html;
+  (window as any).__lastRenderMs = performance.now() - t0; // perf budget probe (§7)
 }
 
 /* ================= helpers ================= */
@@ -414,6 +416,32 @@ function fillSug(input: HTMLInputElement): void {
 var lastDice: number | null = null;
 var searchTimer: any = null;
 
+// roll over an explicit pool; the tap handler is swappable (smart-dice window)
+export function rollDice(pool: Game[]): boolean {
+  if (!pool.length) { toast(t("dice_none")); return false; }
+  var pick;
+  do { pick = pool[Math.floor(Math.random() * pool.length)]; }
+  while (pool.length > 1 && pick.id === lastDice);
+  lastDice = pick.id;
+  state.collapsed["backlog"] = false;
+  openId = pick.id + "@s";
+  render();
+  var el = document.querySelector('.card[data-id="' + pick.id + '"][data-ctx="s"]');
+  if (el) {
+    el.classList.add("chosen");
+    scrollToCard(el);
+  }
+  toast(t("dice_pick") + "«" + pick.name + "»");
+  return true;
+}
+
+var diceTapHandler: () => void = function () {
+  rollDice(state.games.filter(function (g) { return g.status === "backlog"; }));
+};
+export function setDiceHandler(fn: () => void): void {
+  diceTapHandler = fn;
+}
+
 export function wireUI(): void {
   document.getElementById("tabs")!.addEventListener("click", function (e: any) {
     var tb = e.target.closest(".tab");
@@ -485,23 +513,10 @@ export function wireUI(): void {
   });
 
   list.addEventListener("click", function (e: any) {
+    if (e.target.closest(".sugbtn")) return; // suggestion taps are handled above and must not toggle the card
     var dice = e.target.closest("[data-dice]");
     if (dice) {
-      var pool = state.games.filter(function (g) { return g.status === "backlog"; });
-      if (!pool.length) { toast(t("dice_none")); return; }
-      var pick;
-      do { pick = pool[Math.floor(Math.random() * pool.length)]; }
-      while (pool.length > 1 && pick.id === lastDice);
-      lastDice = pick.id;
-      state.collapsed["backlog"] = false;
-      openId = pick.id + "@s";
-      render();
-      var el = document.querySelector('.card[data-id="' + pick.id + '"][data-ctx="s"]');
-      if (el) {
-        el.classList.add("chosen");
-        scrollToCard(el);
-      }
-      toast(t("dice_pick") + "«" + pick.name + "»");
+      diceTapHandler();
       return;
     }
     var head = e.target.closest(".yearhead");

@@ -133,24 +133,22 @@ test("note saved and 📝 chip appears", async ({ page }, ti) => {
 
 test("custom suggestions work by tap for platform, launcher and series", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
-  // platform
-  let card = await openCard(page, "Gamma Grove");
+  await openCard(page, "Gamma Grove");
+  // the card must stay open after each suggestion tap
+  const card = page.locator(".card.open");
   await card.locator(`input[data-act="plat"]`).focus();
   await card.locator(".sug .sugbtn", { hasText: /^PC$/ }).first().click();
+  await expect(card.locator(`input[data-act="plat"]`)).toHaveValue("PC");
+  await card.locator(`input[data-act="src"]`).focus();
+  await card.locator(".sug .sugbtn", { hasText: /^GOG$/ }).first().click();
+  await expect(card.locator(`input[data-act="src"]`)).toHaveValue("GOG");
+  await card.locator(`input[data-act="series"]`).focus();
+  await card.locator(".sug .sugbtn", { hasText: /^Souls$/ }).first().click();
+  await expect(card.locator(`input[data-act="series"]`)).toHaveValue("Souls");
+  // chips reflect the picks
   await expect(
     page.locator(".card", { hasText: "Gamma Grove" }).locator(".plat", { hasText: /^PC$/ })
   ).toHaveCount(1);
-  // launcher (source)
-  card = await openCard(page, "Gamma Grove");
-  await card.locator(`input[data-act="src"]`).focus();
-  await card.locator(".sug .sugbtn", { hasText: /^GOG$/ }).first().click();
-  await expect(
-    page.locator(".card", { hasText: "Gamma Grove" }).locator(".src", { hasText: /^GOG$/ })
-  ).toHaveCount(1);
-  // series (suggested from existing games)
-  card = await openCard(page, "Gamma Grove");
-  await card.locator(`input[data-act="series"]`).focus();
-  await card.locator(".sug .sugbtn", { hasText: /^Souls$/ }).first().click();
   await expect(
     page.locator(".card", { hasText: "Gamma Grove" }).locator(".ser", { hasText: /Souls/ })
   ).toHaveCount(1);

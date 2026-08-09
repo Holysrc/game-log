@@ -14,7 +14,9 @@ export default defineConfig({
   reporter: [["list"]],
   use: {
     baseURL: `http://localhost:${port}/`,
-    trace: "retain-on-failure"
+    trace: "retain-on-failure",
+    // SW would bypass page.route mocks; the offline spec re-enables it
+    serviceWorkers: "block"
   },
   webServer: {
     command: "node tests/server.mjs",

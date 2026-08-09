@@ -297,6 +297,7 @@
   .rclose{
     border:1.5px solid var(--border-dim);border-radius:8px;background:rgba(10,16,48,.6);
     color:var(--text-dim);cursor:pointer;font-size:1rem;padding:8px 12px;line-height:1;
+    min-width:44px;min-height:44px;
   }
   .rclose:active{color:var(--gold);border-color:var(--gold)}
   .rclose:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -304,19 +305,26 @@
   .rchip{
     border:1.5px solid var(--border-dim);border-radius:999px;
     background:rgba(10,16,48,.55);color:var(--text-dim);
-    padding:6px 12px;font-size:.83rem;cursor:pointer;
+    padding:6px 14px;font-size:.83rem;cursor:pointer;
     font-variant-numeric:tabular-nums;
+    min-height:44px; /* tap target on touch screens */
   }
   .rchip.active{border-color:var(--gold);color:var(--gold);background:rgba(233,196,106,.1)}
   .rchip:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   .rbody{margin-top:8px}
   .rrow{display:flex;align-items:baseline;gap:8px;padding:7px 0;font-size:.92rem;min-width:0}
   .rrow .rlabel{color:var(--text-dim);letter-spacing:.02em;flex-shrink:0}
-  .rrow.wide .rlabel{flex-shrink:1}
-  .rdots{flex:1 1 12px;min-width:12px;border-bottom:1px dotted var(--border-dim);opacity:.55;
+  .rdots{flex:1 1 24px;min-width:24px;border-bottom:1px dotted var(--border-dim);opacity:.55;
     transform:translateY(-4px)}
-  .rrow .rval{font-variant-numeric:tabular-nums;text-align:right;min-width:0;overflow-wrap:anywhere;
+  .rrow .rval{font-variant-numeric:tabular-nums;text-align:right;min-width:0;white-space:nowrap;
     font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;font-size:.88rem}
+  /* headline rows: label above, value right-aligned below — no truncated leaders */
+  .rrow.wide{display:block}
+  .rrow.wide .rdots{display:none}
+  .rrow.wide .rlabel{display:block;font-size:.72rem;text-transform:uppercase;
+    letter-spacing:.1em;margin-bottom:2px}
+  .rrow.wide .rval{display:block;white-space:normal;overflow-wrap:anywhere;text-align:right}
+  .rnb{white-space:nowrap}
   .rgold{color:var(--gold)}
   .rstars{color:var(--gold);letter-spacing:.12em;text-shadow:0 1px 2px rgba(0,0,0,.5)}
   .rstars .off{color:var(--border-dim);opacity:.55}
@@ -338,7 +346,55 @@
   .rempty{color:var(--text-dim);text-align:center;padding:44px 10px;font-size:.9rem}
   @media (min-width:860px){
     .rwin{max-width:640px}
+    .rchip{min-height:0;padding:6px 12px} /* pointer devices: compact chips */
   }
+
+  /* ---- smart dice: small FF filter window ---- */
+  .dicewin{position:fixed;inset:0;z-index:42;display:flex;align-items:center;justify-content:center;
+    background:rgba(5,8,24,.78);padding:16px}
+  .dicewin[hidden]{display:none}
+  .dwin{width:min(420px,100%);padding:16px;max-height:calc(100vh - 32px);overflow-y:auto}
+  .dtitle{font-size:1.1rem}
+  .dform{display:grid;gap:8px;margin-top:14px}
+  .dfield{display:flex;align-items:center;gap:8px;min-height:44px}
+  .dfield span{flex:0 0 42%;color:var(--text-dim);font-size:.85rem;letter-spacing:.02em}
+  .dfield select{
+    flex:1;min-width:0;min-height:44px;background:rgba(6,10,34,.7);
+    border:1.5px solid var(--border-dim);
+    border-radius:8px;color:var(--text);padding:9px 10px;font-size:.88rem;
+  }
+  .dfield select:focus{outline:none;border-color:var(--gold)}
+  .dcheck{display:flex;align-items:center;gap:10px;min-height:44px;cursor:pointer;
+    color:var(--text);font-size:.9rem}
+  /* custom FF-styled checkbox: dark fill, gold check */
+  .dcheck input{
+    appearance:none;-webkit-appearance:none;flex:0 0 auto;
+    width:22px;height:22px;margin:0;cursor:pointer;
+    border:1.5px solid var(--border-dim);border-radius:5px;
+    background:rgba(6,10,34,.7);
+    display:grid;place-content:center;
+  }
+  .dcheck input:checked{border-color:var(--gold);background:rgba(233,196,106,.12)}
+  .dcheck input:checked::before{content:"✓";color:var(--gold);font-size:15px;line-height:1;
+    text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .dcheck input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .dpool{
+    margin:10px 0 12px;padding:8px 12px;text-align:center;
+    border:1px dashed var(--border-dim);border-radius:8px;
+    color:var(--green);font-size:.82rem;letter-spacing:.03em;
+    font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+  }
+  .dpool.empty{color:var(--gold);border-color:var(--gold)}
+  .drow{display:flex;gap:8px}
+  .drow .btn{flex:1;padding:12px;font-size:.92rem;min-height:44px}
+  /* ghost text-button: reset must weigh less than the roll pair */
+  .dreset{
+    width:100%;margin-top:4px;min-height:44px;padding:10px;
+    border:none;background:none;color:var(--blue);opacity:.85;
+    font-size:.82rem;letter-spacing:.02em;cursor:pointer;
+  }
+  .dreset:active{color:var(--gold);opacity:1}
+  .dreset:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
 
   /* ---- desktop ≥860px: wide two-column list ---- */
   @media (min-width:860px){

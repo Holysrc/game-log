@@ -110,7 +110,7 @@ function renderPeriod(p: Period): string {
   if (goty) {
     picks += row(
       p === "all" ? t("res_goty_all") : t("res_goty"),
-      '<span class="rgold">' + esc((goty as Game).name) + '</span> <span class="rstars">'
+      '<span class="rgold">' + esc((goty as Game).name) + '</span> <span class="rstars rnb">'
         + starsFor((goty as Game).rating || 0) + '</span>',
       "wide"
     );
@@ -118,7 +118,7 @@ function renderPeriod(p: Period): string {
   if (longest) {
     picks += row(
       t("res_longest"),
-      esc((longest as Game).name) + ' · <span class="rgold">' + fmtHours((longest as Game).time || 0) + '</span>',
+      esc((longest as Game).name) + ' · <span class="rgold rnb">' + fmtHours((longest as Game).time || 0) + '</span>',
       "wide"
     );
   }

@@ -5,11 +5,14 @@ import { test, expect, openApp, openCard, meta, toast } from "./app";
 import { tinyState } from "./fixtures";
 
 test.describe("dice 🎲", () => {
-  test("dicebar on backlog tab picks a backlog game", async ({ page }, ti) => {
+  test("dicebar on backlog tab opens the dice window, roll picks a game", async ({ page }, ti) => {
     const { tr } = meta(ti);
     await openApp(page, ti, tinyState());
     await page.locator(".tab").nth(2).click(); // backlog
     await page.locator(".dicebar").click();
+    await expect(page.locator("#diceWin")).toBeVisible();
+    await page.locator("#diceRoll").click();
+    await expect(page.locator("#diceWin")).toBeHidden();
     await expect(toast(page)).toContainText(tr.dicePick);
     const chosen = page.locator(".card.chosen");
     await expect(chosen).toHaveCount(1);
@@ -22,6 +25,8 @@ test.describe("dice 🎲", () => {
     const diceBtn = page.locator(`.yearhead[data-key="backlog"] .dice`);
     await expect(diceBtn).toBeVisible();
     await diceBtn.click();
+    await expect(page.locator("#dTitle")).toHaveText(tr.diceTitle);
+    await page.locator("#diceRoll").click();
     await expect(toast(page)).toContainText(tr.dicePick);
   });
 });

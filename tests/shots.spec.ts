@@ -47,4 +47,25 @@ test.describe("@shots key screens", () => {
     await openApp(page, ti, null);
     await page.screenshot({ path: shot(ti, "06-empty") });
   });
+
+  test("dice window", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(300));
+    await page.locator(".tab").nth(2).click();
+    await page.locator(".dicebar").click();
+    await expect(page.locator("#diceWin")).toBeVisible();
+    await page.screenshot({ path: shot(ti, "09-dice") });
+  });
+
+  test("results screen", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(300));
+    await page.locator("#resultsBtn").click();
+    await expect(page.locator("#resultsWin")).toBeVisible();
+    await page.screenshot({ path: shot(ti, "07-results") });
+    // all-time has the fullest layout
+    await page.locator(".rchip").first().click();
+    await page.screenshot({ path: shot(ti, "08-results-alltime") });
+    // launcher CSS bars are the flagship element — capture them explicitly
+    await page.locator(".rbar").last().scrollIntoViewIfNeeded();
+    await page.screenshot({ path: shot(ti, "08b-results-launchers") });
+  });
 });

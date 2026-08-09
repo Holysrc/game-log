@@ -35,6 +35,12 @@ ru:{
   ph_token:"GitHub token (права: только gist)",ph_gist:"Gist ID (оставь пустым — создам новый)",
   connect:"Подключить",disconnect:"Отключить",csv:"Импорт CSV из Playnite",backup:"Бэкап",restore:"Восстановить",
   hint:"Заполни что-то одно. Google-вариант: script.google.com → вставить скрипт → Deploy → Web app → доступ «Anyone» → скопировать URL. На втором устройстве вставь тот же URL или токен+ID.",
+  dice_title:"Кубик судьбы",dice_genre:"Жанр",dice_any:"Любой",dice_any_f:"Любая",
+  games_1:" игра",games_2:" игры",games_5:" игр",
+  dice_cs:"Оценка сообщества",dice_cs_any:"Любая",
+  dice_lib:"Есть в библиотеке",dice_fresh:"Только нетронутые",dice_series:"Серия",
+  dice_pool:"В пуле: ",dice_roll:"🎲 Бросить",dice_quick:"Без фильтров",
+  dice_reset:"Сбросить фильтры",dice_empty:"Пул пуст — ослабь фильтры",
   res_title:"Итоги",res_btn_aria:"Итоги по годам",res_close:"Закрыть",
   res_alltime:"Всё время",res_beaten:"Пройдено игр",res_runs:"Прохождений",
   res_hours:"Часов в играх",res_avg:"Средняя оценка",res_top_genres:"Топ жанров",
@@ -79,6 +85,12 @@ en:{
   ph_token:"GitHub token (scope: gist only)",ph_gist:"Gist ID (leave empty — I'll create one)",
   connect:"Connect",disconnect:"Disconnect",csv:"Import Playnite CSV",backup:"Backup",restore:"Restore",
   hint:"Fill in just one. Google option: script.google.com → paste the script → Deploy → Web app → access “Anyone” → copy the URL. On the second device paste the same URL or token+ID.",
+  dice_title:"Dice of fate",dice_genre:"Genre",dice_any:"Any",dice_any_f:"Any",
+  games_1:" game",games_2:" games",games_5:" games",
+  dice_cs:"Community score",dice_cs_any:"Any",
+  dice_lib:"In my library",dice_fresh:"Untouched only",dice_series:"Series",
+  dice_pool:"In the pool: ",dice_roll:"🎲 Roll",dice_quick:"No filters",
+  dice_reset:"Reset filters",dice_empty:"Pool is empty — loosen the filters",
   res_title:"Results",res_btn_aria:"Yearly results",res_close:"Close",
   res_alltime:"All time",res_beaten:"Games beaten",res_runs:"Playthroughs",
   res_hours:"Hours played",res_avg:"Average rating",res_top_genres:"Top genres",
@@ -106,4 +118,15 @@ export function t(k: string): string {
 
 export function stLabel(s: string): string {
   return t("st_" + s);
+}
+
+// «N игр(а/ы)» / "N game(s)" — proper plural for a games count
+export function gamesWord(n: number): string {
+  if (lang === "ru") {
+    var m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return t("games_1");
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return t("games_2");
+    return t("games_5");
+  }
+  return n === 1 ? t("games_1") : t("games_5");
 }
