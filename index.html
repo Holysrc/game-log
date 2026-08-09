@@ -98,12 +98,11 @@
   .sync .hint{font-size:.72rem;color:var(--text-dim);line-height:1.5}
 
   /* ---- tabs ---- */
-  .tabs{display:flex;gap:6px;margin:14px 0 10px;overflow-x:auto;scrollbar-width:none}
-  .tabs::-webkit-scrollbar{display:none}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 10px}
   .tab{
     flex:0 0 auto;border:1.5px solid var(--border-dim);border-radius:999px;
     background:rgba(10,16,48,.55);color:var(--text-dim);
-    padding:6px 14px;font-size:.85rem;cursor:pointer;letter-spacing:.02em;
+    padding:6px 12px;font-size:.83rem;cursor:pointer;letter-spacing:.02em;
   }
   .tab.active{border-color:var(--gold);color:var(--gold);background:rgba(233,196,106,.1)}
   .tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
