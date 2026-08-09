@@ -824,8 +824,9 @@ function render(){
   function matches(g){
     if(noData)return !g.source&&!g.genres&&!g.cs;
     if(!q)return true;
-    if(q.length===1)return norm(g.name).charAt(0)===q; // одна буква — по первой букве названия
-    return norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")+" "+(g.series||"")).indexOf(q)!==-1;
+    // совпадение по началу любого слова: "cry" → Crysis, Cry of Fear; "stranding" → Death Stranding
+    var hay=" "+norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")+" "+(g.series||""));
+    return hay.indexOf(" "+q)!==-1;
   }
   var bySearch=state.games.filter(matches);
   var shown=bySearch.filter(function(g){return filter==="all"||filter==="catalog"||g.status===filter;});
@@ -934,7 +935,8 @@ document.getElementById("search").addEventListener("input",function(e){
     var wasQ=query,nowQ=e.target.value;
     var a=(wasQ&&!nowQ.trim())?clearAnchor():null;
     query=nowQ;render();
-    restoreAnchor(a);
+    if(nowQ.trim())window.scrollTo(0,0); // показываем результаты с первой игры
+    else restoreAnchor(a);
   },150);
 });
 document.getElementById("clearSearch").addEventListener("click",function(){
@@ -1102,7 +1104,8 @@ document.getElementById("list").addEventListener("click",function(e){
     query=g.series;
     document.getElementById("search").value=g.series;
     syncClearBtn();
-    render();return;
+    render();
+    window.scrollTo(0,0);return;
   }
   if(!act){
     var prev=openId;
@@ -1547,6 +1550,7 @@ document.getElementById("nodataBtn").addEventListener("click",function(){
   syncClearBtn();
   document.getElementById("syncPanel").hidden=true;
   render();
+  window.scrollTo(0,0);
 });
 document.getElementById("langSel").addEventListener("change",function(e){
   lang=e.target.value;
