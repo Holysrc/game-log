@@ -182,6 +182,7 @@
     color:var(--text);padding:7px 8px;font-size:.85rem;width:110px;
   }
   .actions .platinput:focus{outline:none;border-color:var(--gold)}
+  .actions .oldcnt{width:60px;text-align:center}
 
   .stars{margin-top:3px;font-size:.72rem;letter-spacing:.15em;color:var(--gold);
     text-shadow:0 1px 2px rgba(0,0,0,.5)}
@@ -290,34 +291,8 @@ var mem=null; // fallback if no localStorage
 var storageOK=true;
 
 function seed(){
-  var d=[],id=1;
-  function add(name,status,year,plat){
-    d.push({id:id++,name:name,status:status,
-      years:status==="done"?[year||0]:[],
-      platform:plat||null,rating:null});
-  }
-  // 2024
-  add("Dragon Quest 7","done",2024,"3DS");
-  ["Death Stranding Director's Cut","Fallout 3 GOTY Edition","GreedFall",
-   "Final Fantasy XIII","Final Fantasy XIII-2","Lightning Returns: Final Fantasy XIII","It Takes Two",
-   "Starfield","Star Wars Jedi: Fallen Order","FEDA: The Emblem of Justice","Star Wars Jedi: Survivor",
-   "S.T.A.L.K.E.R.: Shadow of Chernobyl","S.T.A.L.K.E.R.: Clear Sky","S.T.A.L.K.E.R.: Call of Pripyat"
-   ].forEach(function(n){add(n,"done",2024);});
-  add("Pokemon FireRed","done",2024,"GBA");
-  // 2025
-  ["Gold and Glory: The Road to El Dorado","Indiana Jones and the Great Circle","Avowed",
-   "TMNT: Shredder's Revenge","A Way Out","Mirror's Edge","Clair Obscur: Expedition 33",
-   "Undertale (3 раза)","Deltarune Chapter 1–4","Hollow Knight","Metaphor: ReFantazio",
-   "Dead Island 2","Still Wakes the Deep","Mortal Kombat 1"].forEach(function(n){add(n,"done",2025);});
-  // 2026
-  ["The Elder Scrolls IV: Oblivion Remastered","Dragon's Dogma 2","Final Fantasy XVI","Homefront",
-   "Final Fantasy XII: The Zodiac Age"].forEach(function(n){add(n,"done",2026);});
-  // сейчас
-  add("Scorn","playing");
-  // беклог
-  ["Vagrant Story","Final Fantasy Type-0","Shining Force III","Banner of the Maid",
-   "Baten Kaitos","Magna Carta","Koudelka","Shadow Hearts"].forEach(function(n){add(n,"backlog");});
-  return {nextId:id,games:d};
+  // стартовое состояние пустое: реальные данные приезжают из синка (гиста)
+  return {nextId:1,games:[],collapsed:{}};
 }
 
 function load(){
@@ -494,14 +469,18 @@ function cardHTML(g,ctx){
 
   var badge;
   if(ctx!==null){
-    badge='<span class="badge done">Пройдено · '+yLabel(ctx)+'</span>';
+    var mult=(+ctx===0&&(g.oldCount||1)>1)?" ×"+g.oldCount:"";
+    badge='<span class="badge done">Пройдено · '+yLabel(ctx)+mult+'</span>';
   }else{
     badge='<span class="badge '+g.status+'">'+STATUSES[g.status]+'</span>';
   }
   // в секции статуса покажем историю прохождений чипом
   var histChip="";
   if(ctx===null&&g.years.length){
-    histChip='<span class="plat">✓ '+g.years.map(yLabel).join(", ")+'</span>';
+    var hist=g.years.map(function(y){
+      return +y===0?("давно"+((g.oldCount||1)>1?"×"+g.oldCount:"")):y;
+    }).join(", ");
+    histChip='<span class="plat">✓ '+hist+'</span>';
   }
 
   var actions="";
@@ -517,12 +496,25 @@ function cardHTML(g,ctx){
     if(g.status==="done"&&g.years.indexOf(cy)===-1){
       actions+='<button class="btn gold" data-act="addyear">+ Перепройдено ('+cy+')</button>';
     }
+    // добавить прохождение в любом году
+    var missing=[];
+    for(var ay=cy;ay>=2018;ay--)if(g.years.indexOf(ay)===-1)missing.push(ay);
+    if(missing.length){
+      actions+='<select data-act="addyearsel" aria-label="Добавить год прохождения">'
+        +'<option value="">+ год…</option>'
+        +missing.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
+        +'</select>';
+    }
   }else{
     var yearOpts='<option value="0"'+(+ctx===0?" selected":"")+'>Давно</option>';
     for(var y=cy+1;y>=2018;y--){
       yearOpts+='<option value="'+y+'"'+(+ctx===y?" selected":"")+'>'+y+'</option>';
     }
     actions+='<select data-act="year" aria-label="Год этого прохождения">'+yearOpts+'</select>';
+    if(+ctx===0){
+      actions+='<input class="platinput oldcnt" data-act="oldcount" type="number" min="1" max="99" '
+        +'value="'+(g.oldCount||1)+'" aria-label="Сколько раз пройдено давно"> раз';
+    }
     actions+='<button class="btn" data-act="rmyear">Убрать из «'+yLabel(ctx)+'»</button>';
     if(g.years.indexOf(cy)===-1){
       actions+='<button class="btn gold" data-act="addyear">+ Перепройдено ('+cy+')</button>';
@@ -761,7 +753,7 @@ document.getElementById("list").addEventListener("keydown",function(e){
 });
 document.getElementById("list").addEventListener("change",function(e){
   var act=e.target.dataset.act;
-  if(act!=="year"&&act!=="plat"&&act!=="src")return;
+  if(act!=="year"&&act!=="plat"&&act!=="src"&&act!=="oldcount"&&act!=="addyearsel")return;
   var card=e.target.closest(".card");
   var g=state.games.find(function(x){return x.id===+card.dataset.id;});
   if(!g)return;
@@ -774,6 +766,19 @@ document.getElementById("list").addEventListener("change",function(e){
       openId=g.id+"@"+newY;
     }
     save();render();
+  }
+  else if(act==="oldcount"){
+    g.oldCount=Math.max(1,Math.min(99,parseInt(e.target.value,10)||1));
+    save();render();
+  }
+  else if(act==="addyearsel"){
+    var v=+e.target.value;
+    if(v){
+      addYear(g,v);
+      if(g.status==="backlog")g.status="done";
+      save();render();
+      toast("«"+g.name+"» добавлена в "+v);
+    }
   }
   else if(act==="plat"){g.platform=e.target.value.trim()||null;save();render();}
   else{g.source=e.target.value.trim()||null;save();render();}
