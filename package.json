@@ -1,0 +1,16 @@
+{
+  "name": "game-log",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Game Log — personal FF-styled game tracker PWA",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --grep-invert @shots",
+    "shots": "playwright test --grep @shots",
+    "serve": "node tests/server.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "typescript": "^7.0.2"
+  }
+}

@@ -295,6 +295,13 @@
   }
   .toast.show{opacity:1}
   input[type=file]{display:none}
+
+  /* ---- desktop ≥860px: wide two-column list ---- */
+  @media (min-width:860px){
+    body{max-width:1024px;}
+    .sec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:start}
+    .sec>.yearhead{grid-column:1/-1}
+  }
 </style>
 </head>
 <body>
@@ -1484,7 +1491,7 @@ document.getElementById("gearBtn").addEventListener("click",function(){
 });
 document.getElementById("syncConnect").addEventListener("click",function(){
   var gs=document.getElementById("gsUrl").value.trim();
-  var t=document.getElementById("ghToken").value.trim();
+  var tok=document.getElementById("ghToken").value.trim();
   var g=document.getElementById("ghGist").value.trim();
   if(gs){
     if(gs.indexOf("https://script.google.com/")!==0){
@@ -1496,8 +1503,8 @@ document.getElementById("syncConnect").addEventListener("click",function(){
     toast(t("connected_drive"));
     return;
   }
-  if(!t){toast(t("need_token"));return;}
-  syncCfg={gs:"",token:t,gist:g};
+  if(!tok){toast(t("need_token"));return;}
+  syncCfg={gs:"",token:tok,gist:g};
   if(g){
     saveSyncCfg();
     pullRemote();
