@@ -159,6 +159,12 @@
     color:var(--gold);cursor:pointer;padding:11px;font-size:.95rem;letter-spacing:.04em;
   }
   .dicebar:active{transform:translateY(1px)}
+  .sersum{
+    margin:2px 0 10px;padding:9px 12px;border:1.5px solid var(--blue);border-radius:8px;
+    background:rgba(143,163,217,.08);color:var(--text);font-size:.85rem;
+  }
+  .sersum b{color:var(--blue);letter-spacing:.03em}
+  .sersum .n{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--gold)}
   @keyframes chosen{
     0%{box-shadow:0 0 0 0 rgba(233,196,106,0)}
     25%{box-shadow:0 0 18px 4px rgba(233,196,106,.75)}
@@ -174,7 +180,9 @@
   .card{
     position:relative;margin-bottom:7px;padding:10px 12px 10px 26px;cursor:pointer;
     user-select:none;
+    content-visibility:auto;contain-intrinsic-size:auto 70px;
   }
+  .card.open{content-visibility:visible}
   .card .cursor{
     position:absolute;left:8px;top:12px;color:var(--gold);font-size:.8rem;
     opacity:0;transition:opacity .15s;
@@ -253,6 +261,10 @@
   }
   .actions select.gold{border-color:var(--gold);color:var(--gold)}
   .actions .del{border-color:var(--danger);color:var(--danger);margin-left:auto}
+  .mpair{display:inline-flex;gap:4px;align-items:stretch}
+  .mpair .nomerge{padding:7px 9px;color:var(--text-dim)}
+  .mchoose{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;
+    font-size:.8rem;color:var(--text-dim)}
 
   .empty{color:var(--text-dim);text-align:center;padding:26px 10px;font-size:.9rem}
 
@@ -298,6 +310,7 @@
       <button class="btn" id="resBtn">Восстановить</button>
     </div>
     <button class="btn" id="nodataBtn">Игры без данных Playnite</button>
+    <button class="btn" id="resetNoMergeBtn" hidden></button>
   </div>
 </header>
 
@@ -348,7 +361,7 @@ ru:{
   added_to:"добавлена в ",platform:"Платформа",launcher:"Лончер",rel_ph:"Год выхода",genres_ph:"Жанры",series_ph:"Серия",nodata:"Игры без данных Playnite",
   sort_default:"⇅ Без сортировки",sort_name:"По алфавиту",sort_cs:"По оценке сообщества",
   sort_rating:"По моей оценке",sort_rel:"По году выхода",sort_time:"По наигранному",
-  merge_with:"⇆ Объединить с «{n}»",confirm_merge:"Объединить в одну карточку? Останется «{a}», данные «{b}» перенесутся.",merged:"Объединено: ",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
+  merge_with:"⇆ Объединить с «{n}»",merge_keep:"Оставить какую:",cancel:"Отмена",nomerge_done:"Понял, эта пара — не дубли. Вернуть можно в настройках",reset_nomerge:"Вернуть скрытые пары дублей",ser_games:" игр",ser_runs:" прохождений",ser_done:" пройдено",nomerge_reset:"Скрытые пары снова будут предлагаться",merged:"Объединено: ",note_ph:"Заметка по игре — мысли, где остановился, что не забыть…",
   h:" ч",min:" мин",cs_title:"Оценка сообщества Playnite",
   empty:"Пока пусто.",empty_search:"Ничего не найдено. Нажми «+ Добавить», чтобы внести эту игру.",
   added_backlog:"Добавлено в беклог: ",already:"уже в списке",
@@ -382,7 +395,7 @@ en:{
   added_to:"added to ",platform:"Platform",launcher:"Launcher",rel_ph:"Release year",genres_ph:"Genres",series_ph:"Series",nodata:"Games without Playnite data",
   sort_default:"⇅ Default order",sort_name:"Alphabetical",sort_cs:"By community score",
   sort_rating:"By my rating",sort_rel:"By release year",sort_time:"By time played",
-  merge_with:"⇆ Merge with \u201c{n}\u201d",confirm_merge:"Merge into one card? \u201c{a}\u201d stays, data from \u201c{b}\u201d is carried over.",merged:"Merged: ",note_ph:"Game note — thoughts, where you stopped, what to remember…",
+  merge_with:"⇆ Merge with \u201c{n}\u201d",merge_keep:"Keep which one:",cancel:"Cancel",nomerge_done:"Got it, not a duplicate. Restore anytime in settings",reset_nomerge:"Restore hidden duplicate pairs",ser_games:" games",ser_runs:" playthroughs",ser_done:" beaten",nomerge_reset:"Hidden pairs will be suggested again",merged:"Merged: ",note_ph:"Game note — thoughts, where you stopped, what to remember…",
   h:" h",min:" min",cs_title:"Playnite community score",
   empty:"Nothing here yet.",empty_search:"Nothing found. Tap “+ Add” to add this game.",
   added_backlog:"Added to backlog: ",already:"is already in the list",
@@ -449,6 +462,7 @@ function cleanPlat(p){
 }
 function migrate(st){
   if(!st.collapsed)st.collapsed={};
+  if(!Array.isArray(st.noMerge))st.noMerge=[];
   (st.games||[]).forEach(function(g){
     if(!Array.isArray(g.years)){
       g.years=(g.status==="done")?[g.year||0]:[];
@@ -582,7 +596,7 @@ function pullRemote(){
 if(!storageOK)setTimeout(function(){toast(t("storage_warn"));},600);
 
 /* ================= ui state ================= */
-var filter="all",query="",openId=null;
+var filter="all",query="",openId=null,mergeAsk=null;
 var SORTKEY="gamelog-sort";
 var sortMode="default";
 try{sortMode=localStorage.getItem(SORTKEY)||"default";}catch(e){}
@@ -635,22 +649,21 @@ function cardHTML(g,ctx){
   var noteChip=g.note?'<span class="plat">📝</span>':"";
 
   var actions="";
+  if(open){
   if(ctx===null){
-    actions+=STATUS_KEYS.filter(function(s){return s!==g.status;})
+    actions+=STATUS_KEYS.filter(function(s){return s!==g.status&&s!=="done";})
       .map(function(s){
-        var label=s==="done"?stLabel("done")+" ("+cy+")":stLabel(s);
-        return '<button class="btn" data-act="status" data-s="'+s+'">'+label+'</button>';
+        return '<button class="btn" data-act="status" data-s="'+s+'">'+stLabel(s)+'</button>';
       }).join("");
-    if(g.years.indexOf(0)===-1){
-      actions+='<button class="btn" data-act="status" data-s="done" data-old="1">'+t("done_old")+'</button>';
-    }
     // добавить прохождение в любом году
     var missing=[];
     for(var ay=cy;ay>=2018;ay--)if(g.years.indexOf(ay)===-1)missing.push(ay);
-    if(missing.length){
+    var oldOpt=g.years.indexOf(0)===-1?'<option value="old">'+t("long_ago")+'</option>':"";
+    if(missing.length||oldOpt){
       actions+='<select data-act="addyearsel" class="gold">'
         +'<option value="">'+t("add_year")+'</option>'
         +missing.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
+        +oldOpt
         +'</select>';
     }
   }else{
@@ -664,10 +677,12 @@ function cardHTML(g,ctx){
     actions+='<button class="btn" data-act="rmyear">'+t("remove_from").replace("{y}",yLabel(ctx))+'</button>';
     var missing2=[];
     for(var ay2=cy;ay2>=2018;ay2--)if(g.years.indexOf(ay2)===-1)missing2.push(ay2);
-    if(missing2.length){
+    var oldOpt2=g.years.indexOf(0)===-1?'<option value="old">'+t("long_ago")+'</option>':"";
+    if(missing2.length||oldOpt2){
       actions+='<select data-act="addyearsel" class="gold">'
         +'<option value="">'+t("add_year")+'</option>'
         +missing2.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
+        +oldOpt2
         +'</select>';
     }
   }
@@ -718,12 +733,24 @@ function cardHTML(g,ctx){
       var rem=longK.slice(shortK.length).trim();
       return rem!==""&&!isSequelTail(rem);
     }).slice(0,2);
+    function pairKey(a,b){return Math.min(a,b)+"-"+Math.max(a,b);}
+    cands=cands.filter(function(o){return state.noMerge.indexOf(pairKey(g.id,o.id))===-1;});
     cands.forEach(function(o){
-      actions+='<button class="btn gold" data-act="merge" data-mid="'+o.id+'">'
-        +t("merge_with").replace("{n}",esc(o.name))+'</button>';
+      if(mergeAsk&&mergeAsk.id===g.id&&mergeAsk.mid===o.id){
+        actions+='<span class="mchoose">'+t("merge_keep")
+          +'<button class="btn gold" data-act="mergekeep" data-mid="'+o.id+'" data-keep="this">«'+esc(g.name)+'»</button>'
+          +'<button class="btn gold" data-act="mergekeep" data-mid="'+o.id+'" data-keep="other">«'+esc(o.name)+'»</button>'
+          +'<button class="btn" data-act="mergecancel">'+t("cancel")+'</button></span>';
+      }else{
+        actions+='<span class="mpair">'
+          +'<button class="btn gold" data-act="mergeask" data-mid="'+o.id+'">'
+          +t("merge_with").replace("{n}",esc(o.name))+'</button>'
+          +'<button class="btn nomerge" data-act="nomerge" data-mid="'+o.id+'" title="Не дубли">✕</button></span>';
+      }
     });
   }
   actions+='<button class="btn del" data-act="del">'+t("del")+'</button>';
+  } // конец if(open) — закрытым карточкам панель действий не нужна
 
   var starsView="";
   if(g.rating||g.cs){
@@ -760,7 +787,7 @@ function cardHTML(g,ctx){
     +chipsView
     +metaView
     +starsView
-    +'<div class="actions">'+actions+'</div></div>';
+    +(open?'<div class="actions">'+actions+'</div>':"")+'</div>';
 }
 function render(){
   var c=counts();
@@ -791,6 +818,21 @@ function render(){
     Object.keys(srcs).map(function(s){return '<option value="'+esc(s)+'">';}).join("");
 
   var html="";
+  // сводка серии: если запрос совпадает с названием серии
+  if(q&&!noData){
+    var serGames=state.games.filter(function(g){return g.series&&norm(g.series)===q;});
+    if(serGames.length>1){
+      var runs=0,doneN=0;
+      serGames.forEach(function(g){
+        g.years.forEach(function(y){runs+=cnt(g,y);});
+        if(g.years.length)doneN++;
+      });
+      html+='<div class="sersum">❖ <b>'+esc(serGames[0].series)+'</b> — '
+        +'<span class="n">'+serGames.length+'</span>'+t("ser_games")+' · '
+        +'<span class="n">'+doneN+'</span>'+t("ser_done")+' · '
+        +'<span class="n">'+runs+'</span>'+t("ser_runs")+'</div>';
+    }
+  }
   function section(key,title,items,ctx){
     if(!items.length)return"";
     items=sortItems(items);
@@ -918,6 +960,18 @@ document.getElementById("list").addEventListener("click",function(e){
   save();render();
 });
 
+function patchCardByKey(k){
+  if(!k)return;
+  var parts=k.split("@");
+  var g=state.games.find(function(x){return x.id===+parts[0];});
+  if(!g)return;
+  var el=document.querySelector('.card[data-id="'+parts[0]+'"][data-ctx="'+parts[1]+'"]');
+  if(!el){render();return;}
+  var tmp=document.createElement("div");
+  tmp.innerHTML=cardHTML(g,parts[1]==="s"?null:+parts[1]);
+  el.replaceWith(tmp.firstChild);
+}
+
 var lastDice=null;
 document.getElementById("list").addEventListener("click",function(e){
   var dice=e.target.closest("[data-dice]");
@@ -964,7 +1018,14 @@ document.getElementById("list").addEventListener("click",function(e){
     document.getElementById("search").value=g.series;
     render();return;
   }
-  if(!act){openId=(openId===key?null:key);render();return;}
+  if(!act){
+    var prev=openId;
+    openId=(openId===key?null:key);
+    mergeAsk=null;
+    patchCardByKey(prev);
+    if(openId&&openId!==prev)patchCardByKey(openId);
+    return;
+  }
   if(act==="status"){
     var s=e.target.dataset.s;
     g.status=s;
@@ -992,30 +1053,49 @@ document.getElementById("list").addEventListener("click",function(e){
     g.rating=(g.rating===v?null:v);
     save();render();return;
   }
-  if(act==="merge"){
+  if(act==="mergeask"){
+    mergeAsk={id:g.id,mid:+e.target.dataset.mid};
+    render();return;
+  }
+  if(act==="mergecancel"){
+    mergeAsk=null;render();return;
+  }
+  if(act==="nomerge"){
+    var oid=+e.target.dataset.mid;
+    var pk=Math.min(g.id,oid)+"-"+Math.max(g.id,oid);
+    if(state.noMerge.indexOf(pk)===-1)state.noMerge.push(pk);
+    mergeAsk=null;save();render();
+    toast(t("nomerge_done"));return;
+  }
+  if(act==="mergekeep"){
     var other=state.games.find(function(x){return x.id===+e.target.dataset.mid;});
     if(!other)return;
-    if(!confirm(t("confirm_merge").replace("{a}",g.name).replace("{b}",other.name)))return;
-    // годы и счётчик «давно»
-    other.years.forEach(function(y){addYear(g,y);});
-    if(other.counts){
-      g.counts=g.counts||{};
-      for(var ck in other.counts){
-        if((other.counts[ck]||1)>(g.counts[ck]||1))g.counts[ck]=other.counts[ck];
+    var keep=e.target.dataset.keep==="this"?g:other;
+    var absorb=keep===g?other:g;
+    // годы и счётчики
+    absorb.years.forEach(function(y){addYear(keep,y);});
+    if(absorb.counts){
+      keep.counts=keep.counts||{};
+      for(var ck in absorb.counts){
+        if((absorb.counts[ck]||1)>(keep.counts[ck]||1))keep.counts[ck]=absorb.counts[ck];
       }
     }
     // статус: берём более «продвинутый»
     var rank={backlog:0,dropped:1,playing:2,done:3};
-    if(rank[other.status]>rank[g.status])g.status=other.status;
-    // поля: свои в приоритете, пустоты добираем у второго
-    ["platform","source","genres","rel","cs","rating"].forEach(function(k){
-      if(!g[k]&&other[k])g[k]=other[k];
+    if(rank[absorb.status]>rank[keep.status])keep.status=absorb.status;
+    // поля: у остающейся приоритет, пустоты добираем у второй
+    ["platform","source","genres","rel","cs","rating","series"].forEach(function(k){
+      if(!keep[k]&&absorb[k])keep[k]=absorb[k];
     });
-    if((other.time||0)>(g.time||0))g.time=other.time;
-    if(other.note)g.note=g.note?(g.note+"\n"+other.note):other.note;
-    state.games=state.games.filter(function(x){return x.id!==other.id;});
-    openId=null;save();render();
-    toast(t("merged")+"«"+g.name+"»");
+    if((absorb.time||0)>(keep.time||0))keep.time=absorb.time;
+    if(absorb.note)keep.note=keep.note?(keep.note+"\n"+absorb.note):absorb.note;
+    state.games=state.games.filter(function(x){return x.id!==absorb.id;});
+    // чистим записи noMerge с удалённым id
+    state.noMerge=state.noMerge.filter(function(pk2){
+      return pk2.split("-").indexOf(String(absorb.id))===-1;
+    });
+    mergeAsk=null;openId=null;save();render();
+    toast(t("merged")+"«"+keep.name+"»");
     return;
   }
   if(act==="del"){
@@ -1063,12 +1143,13 @@ document.getElementById("list").addEventListener("change",function(e){
     save();render();
   }
   else if(act==="addyearsel"){
-    var v=+e.target.value;
-    if(v){
+    var raw=e.target.value;
+    if(raw){
+      var v=raw==="old"?0:+raw;
       addYear(g,v);
-      if(g.status==="backlog")g.status="done";
+      if(g.status==="backlog"||g.status==="playing")g.status="done";
       save();render();
-      toast("«"+g.name+"» "+t("added_to")+v);
+      toast("«"+g.name+"» "+t("added_to")+yLabel(v));
     }
   }
   else if(act==="plat"){g.platform=e.target.value.trim()||null;save();render();}
@@ -1258,9 +1339,16 @@ document.getElementById("jsonFile").addEventListener("change",function(e){
 });
 
 /* ================= панель синхронизации ================= */
+function refreshNoMergeBtn(){
+  var b=document.getElementById("resetNoMergeBtn");
+  var n=(state.noMerge||[]).length;
+  b.hidden=!n;
+  b.textContent=t("reset_nomerge")+" ("+n+")";
+}
 document.getElementById("gearBtn").addEventListener("click",function(){
   var p=document.getElementById("syncPanel");
   p.hidden=!p.hidden;
+  refreshNoMergeBtn();
   if(!p.hidden){
     document.getElementById("gsUrl").value=syncCfg.gs||"";
     document.getElementById("ghToken").value=syncCfg.token||"";
@@ -1335,6 +1423,7 @@ function applyLang(){
   document.getElementById("bakBtn").textContent=t("backup");
   document.getElementById("resBtn").textContent=t("restore");
   document.getElementById("nodataBtn").textContent=t("nodata");
+  refreshNoMergeBtn();
   var ss=document.getElementById("sortSel");
   ss.innerHTML=["default","name","cs","rating","rel","time"].map(function(m){
     return '<option value="'+m+'">'+t("sort_"+m)+'</option>';
@@ -1347,6 +1436,11 @@ document.getElementById("sortSel").addEventListener("change",function(e){
   sortMode=e.target.value;
   try{localStorage.setItem(SORTKEY,sortMode);}catch(err){}
   render();
+});
+document.getElementById("resetNoMergeBtn").addEventListener("click",function(){
+  state.noMerge=[];
+  save();render();refreshNoMergeBtn();
+  toast(t("nomerge_reset"));
 });
 document.getElementById("nodataBtn").addEventListener("click",function(){
   document.getElementById("search").value="#nodata";
