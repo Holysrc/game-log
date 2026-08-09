@@ -673,7 +673,7 @@ function cardHTML(g,ctx){
       }).join("");
     // добавить прохождение в любом году
     var missing=[];
-    for(var ay=cy;ay>=2018;ay--)if(g.years.indexOf(ay)===-1)missing.push(ay);
+    for(var ay=cy;ay>=2000;ay--)if(g.years.indexOf(ay)===-1)missing.push(ay);
     var oldOpt=g.years.indexOf(0)===-1?'<option value="old">'+t("long_ago")+'</option>':"";
     if(missing.length||oldOpt){
       actions+='<select data-act="addyearsel" class="gold">'
@@ -684,7 +684,7 @@ function cardHTML(g,ctx){
     }
   }else{
     var yearOpts='<option value="0"'+(+ctx===0?" selected":"")+'>'+t("long_ago")+'</option>';
-    for(var y=cy+1;y>=2018;y--){
+    for(var y=cy+1;y>=2000;y--){
       yearOpts+='<option value="'+y+'"'+(+ctx===y?" selected":"")+'>'+y+'</option>';
     }
     actions+='<select data-act="year">'+yearOpts+'</select>';
@@ -692,7 +692,7 @@ function cardHTML(g,ctx){
       +'value="'+cnt(g,+ctx)+'">'+t("times");
     actions+='<button class="btn" data-act="rmyear">'+t("remove_from").replace("{y}",yLabel(ctx))+'</button>';
     var missing2=[];
-    for(var ay2=cy;ay2>=2018;ay2--)if(g.years.indexOf(ay2)===-1)missing2.push(ay2);
+    for(var ay2=cy;ay2>=2000;ay2--)if(g.years.indexOf(ay2)===-1)missing2.push(ay2);
     var oldOpt2=g.years.indexOf(0)===-1?'<option value="old">'+t("long_ago")+'</option>':"";
     if(missing2.length||oldOpt2){
       actions+='<select data-act="addyearsel" class="gold">'
