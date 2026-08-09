@@ -824,9 +824,9 @@ function render(){
   function matches(g){
     if(noData)return !g.source&&!g.genres&&!g.cs;
     if(!q)return true;
-    // совпадение по началу любого слова: "cry" → Crysis, Cry of Fear; "stranding" → Death Stranding
-    var hay=" "+norm(g.name+" "+(g.platform||"")+" "+(g.source||"")+" "+(g.genres||"")+" "+(g.series||""));
-    return hay.indexOf(" "+q)!==-1;
+    // строго по началу названия; плюс точное имя серии — для чипа ❖
+    if(norm(g.name).indexOf(q)===0)return true;
+    return !!(g.series&&norm(g.series)===q);
   }
   var bySearch=state.games.filter(matches);
   var shown=bySearch.filter(function(g){return filter==="all"||filter==="catalog"||g.status===filter;});
@@ -917,6 +917,12 @@ var searchTimer=null;
 function syncClearBtn(){
   document.getElementById("clearSearch").hidden=!document.getElementById("search").value;
 }
+function scrollToResults(){
+  var bar=document.querySelector(".bar.mainbar");
+  if(!bar)return;
+  var top=bar.offsetTop;
+  if(window.scrollY>top)window.scrollTo(0,top); // поиск остаётся прилипшим, шапка не выезжает
+}
 function clearAnchor(){
   // первая карточка отфильтрованного списка — к ней вернёмся после очистки
   var c=document.querySelector("#list .card");
@@ -935,7 +941,7 @@ document.getElementById("search").addEventListener("input",function(e){
     var wasQ=query,nowQ=e.target.value;
     var a=(wasQ&&!nowQ.trim())?clearAnchor():null;
     query=nowQ;render();
-    if(nowQ.trim())window.scrollTo(0,0); // показываем результаты с первой игры
+    if(nowQ.trim())scrollToResults(); // результаты с первой игры, шапка скрыта
     else restoreAnchor(a);
   },150);
 });
@@ -1105,7 +1111,7 @@ document.getElementById("list").addEventListener("click",function(e){
     document.getElementById("search").value=g.series;
     syncClearBtn();
     render();
-    window.scrollTo(0,0);return;
+    scrollToResults();return;
   }
   if(!act){
     var prev=openId;
@@ -1550,7 +1556,7 @@ document.getElementById("nodataBtn").addEventListener("click",function(){
   syncClearBtn();
   document.getElementById("syncPanel").hidden=true;
   render();
-  window.scrollTo(0,0);
+  scrollToResults();
 });
 document.getElementById("langSel").addEventListener("change",function(e){
   lang=e.target.value;
