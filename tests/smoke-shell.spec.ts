@@ -46,6 +46,19 @@ test("desktop ≥860px uses a wide multi-column layout", async ({ page }, ti) =>
   expect(secDisplay).toBe("grid");
 });
 
+test("full 1500-game fixture renders with correct stats", async ({ page }, ti) => {
+  const st = makeState(); // default 1500
+  const expected = { playing: 0, backlog: 0, done: 0 };
+  for (const g of st.games)
+    if (g.status in expected) (expected as any)[g.status]++;
+  await openApp(page, ti, st);
+  await expect(page.locator("#stPlaying")).toHaveText(String(expected.playing));
+  await expect(page.locator("#stBacklog")).toHaveText(String(expected.backlog));
+  await expect(page.locator("#stDone")).toHaveText(String(expected.done));
+  await expect(page.locator(".yearhead").first()).toBeVisible();
+  expect(await page.locator(".card").count()).toBeGreaterThan(1000);
+});
+
 test.describe("mobile: no horizontal overflow anywhere", () => {
   test.beforeEach(({}, ti) => {
     test.skip(meta(ti).form !== "mobile", "mobile-only check");

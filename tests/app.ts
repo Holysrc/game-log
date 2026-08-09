@@ -95,9 +95,11 @@ export async function openApp(
     },
     { state: state ?? null, lang, syncCfg: opts.syncCfg ?? null }
   );
-  // real network is forbidden in tests; sync specs override this route
-  await page.route("https://api.github.com/**", (r) => r.abort());
-  await page.route("https://script.google.com/**", (r) => r.abort());
+  // real network is forbidden in tests: block everything non-local.
+  // Sync specs register their mocks AFTER this, so they take precedence.
+  await page.route("**/*", (r) =>
+    r.request().url().startsWith("http://localhost") ? r.continue() : r.abort()
+  );
   if (opts.beforeGoto) await opts.beforeGoto();
   await page.goto("/");
   await expect(page.locator("h1")).toContainText(meta(testInfo).tr.title);

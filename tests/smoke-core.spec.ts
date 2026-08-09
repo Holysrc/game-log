@@ -96,6 +96,21 @@ test("«+ Beaten in…» select adds a run with count", async ({ page }, ti) => 
   await expect(page.locator("#stDone")).toHaveText("6");
 });
 
+test("«+ Beaten in…» works from a year-group card too", async ({ page }, ti) => {
+  const { tr } = meta(ti);
+  await openApp(page, ti, tinyState());
+  const cy = new Date().getFullYear();
+  const card = page.locator(`.card[data-ctx="2024"]`, { hasText: "Delta Drift" });
+  await card.locator(".name").click();
+  await card.locator(`select[data-act="addyearsel"]`).selectOption(String(cy));
+  await expect(toast(page)).toContainText(`${tr.addedTo} ${cy}`);
+  const sec = page.locator(".sec", { has: page.locator(`.yearhead[data-key="y${cy}"]`) });
+  await expect(sec.locator(".card", { hasText: "Delta Drift" })).toHaveCount(1);
+  // the 2024 run is untouched
+  const sec24 = page.locator(".sec", { has: page.locator(`.yearhead[data-key="y2024"]`) });
+  await expect(sec24.locator(".card", { hasText: "Delta Drift" })).toHaveCount(1);
+});
+
 test("stars render, community score chip, rating editable", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
   const delta = page.locator(`.card[data-ctx="2024"]`, { hasText: "Delta Drift" });
@@ -116,15 +131,28 @@ test("note saved and 📝 chip appears", async ({ page }, ti) => {
   await expect(noteChips.first()).toBeVisible();
 });
 
-test("custom suggestions for platform work by tap", async ({ page }, ti) => {
+test("custom suggestions work by tap for platform, launcher and series", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
-  const card = await openCard(page, "Gamma Grove");
+  // platform
+  let card = await openCard(page, "Gamma Grove");
   await card.locator(`input[data-act="plat"]`).focus();
-  const sug = card.locator(".sug").first();
-  await expect(sug.locator(".sugbtn").first()).toBeVisible();
-  await sug.locator(".sugbtn", { hasText: /^PC$/ }).first().click();
+  await card.locator(".sug .sugbtn", { hasText: /^PC$/ }).first().click();
   await expect(
     page.locator(".card", { hasText: "Gamma Grove" }).locator(".plat", { hasText: /^PC$/ })
+  ).toHaveCount(1);
+  // launcher (source)
+  card = await openCard(page, "Gamma Grove");
+  await card.locator(`input[data-act="src"]`).focus();
+  await card.locator(".sug .sugbtn", { hasText: /^GOG$/ }).first().click();
+  await expect(
+    page.locator(".card", { hasText: "Gamma Grove" }).locator(".src", { hasText: /^GOG$/ })
+  ).toHaveCount(1);
+  // series (suggested from existing games)
+  card = await openCard(page, "Gamma Grove");
+  await card.locator(`input[data-act="series"]`).focus();
+  await card.locator(".sug .sugbtn", { hasText: /^Souls$/ }).first().click();
+  await expect(
+    page.locator(".card", { hasText: "Gamma Grove" }).locator(".ser", { hasText: /Souls/ })
   ).toHaveCount(1);
 });
 
