@@ -211,6 +211,8 @@
   .card .name{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-size:.98rem}
   .card .row .badge{margin-left:auto;flex-shrink:0}
   .chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+  .favmark{flex:0 0 auto;color:var(--gold);font-size:.95rem;
+    text-shadow:0 1px 3px rgba(0,0,0,.6);align-self:flex-start}
   .card.done .name{color:#d9e2f5}
   .card.dropped .name{color:var(--gray);text-decoration:line-through;text-decoration-color:rgba(138,143,156,.6)}
   .badge{
@@ -338,6 +340,7 @@
   <button class="tab" data-f="done">Пройдено</button>
   <button class="tab" data-f="dropped">Брошено</button>
   <button class="tab" data-f="catalog">Каталог</button>
+  <button class="tab" data-f="fav">⚑ Избранное</button>
 </nav>
 
 <div class="bar mainbar">
@@ -371,7 +374,7 @@ ru:{
   st_backlog:"Беклог",st_playing:"Играю",st_done:"Пройдено",st_dropped:"Брошено",
   title:"Журнал игр",subtitle:"беклог · прогресс · история прохождений",
   stat_playing:"играю",stat_backlog:"беклог",stat_done:"пройдено",
-  tab_all:"Все",tab_catalog:"Каталог",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
+  tab_all:"Все",tab_catalog:"Каталог",tab_fav:"⚑ Избранное",fav_on:"⚑ В избранное",fav_off:"⚑ Убрать из избранного",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
   dice_bar:"🎲 Во что поиграть? Пусть решит судьба",dice_aria:"Случайная игра из беклога",
   dice_none:"Беклог пуст — вот это достижение!",dice_pick:"Судьба выбрала: ",
   long_ago:"Давно",ago_short:"давно",done_old:"Пройдено давно",replayed:"+ Перепройдено",
@@ -405,7 +408,7 @@ en:{
   st_backlog:"Backlog",st_playing:"Playing",st_done:"Beaten",st_dropped:"Dropped",
   title:"Game Log",subtitle:"backlog · progress · completion history",
   stat_playing:"playing",stat_backlog:"backlog",stat_done:"beaten",
-  tab_all:"All",tab_catalog:"Catalog",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",
+  tab_all:"All",tab_catalog:"Catalog",tab_fav:"⚑ Favorites",fav_on:"⚑ Add to favorites",fav_off:"⚑ Remove from favorites",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",
   dice_bar:"🎲 What to play? Let fate decide",dice_aria:"Random game from backlog",
   dice_none:"Backlog is empty — what an achievement!",dice_pick:"Fate has chosen: ",
   long_ago:"Way back",ago_short:"way back",done_old:"Beaten way back",replayed:"+ Replayed",
@@ -672,6 +675,7 @@ function cardHTML(g,ctx){
   if(open){
   actions+='<input class="platinput namefield" data-act="rename" placeholder="'+t("name_ph")+'" '
     +'value="'+esc(g.name)+'">';
+  actions+='<button class="btn'+(g.fav?" gold":"")+'" data-act="fav">'+(g.fav?t("fav_off"):t("fav_on"))+'</button>';
   if(ctx===null){
     actions+=STATUS_KEYS.filter(function(s){return s!==g.status&&s!=="done";})
       .map(function(s){
@@ -810,6 +814,7 @@ function cardHTML(g,ctx){
   return '<div class="card win '+g.status+(open?" open":"")+'" data-id="'+g.id+'" data-ctx="'+(ctx===null?"s":ctx)+'">'
     +'<span class="cursor">▶</span>'
     +'<div class="row"><span class="name">'+esc(g.name)+'</span>'
+    +(g.fav?'<span class="favmark" title="⚑">⚑</span>':"")
     +badge+'</div>'
     +chipsView
     +metaView
@@ -832,7 +837,10 @@ function render(){
     return !!(g.series&&norm(g.series)===q);
   }
   var bySearch=state.games.filter(matches);
-  var shown=bySearch.filter(function(g){return filter==="all"||filter==="catalog"||g.status===filter;});
+  var shown=bySearch.filter(function(g){
+    if(filter==="fav")return !!g.fav;
+    return filter==="all"||filter==="catalog"||g.status===filter;
+  });
 
   // платформы и лончеры для подсказок: стандартные + те, что уже введены
   var plats={},srcs={};
@@ -902,7 +910,7 @@ function render(){
     if(filter==="backlog"&&shown.length){
       html+='<button class="dicebar" data-dice>'+t("dice_bar")+'</button>';
     }
-    html+=section(filter,filter==="catalog"?t("tab_catalog"):stLabel(filter),shown,null);
+    html+=section(filter,filter==="catalog"?t("tab_catalog"):(filter==="fav"?t("tab_fav"):stLabel(filter)),shown,null);
   }
   document.getElementById("list").innerHTML=html;
 
@@ -1148,6 +1156,10 @@ document.getElementById("list").addEventListener("click",function(e){
     }
     openId=null;save();render();return;
   }
+  if(act==="fav"){
+    g.fav=!g.fav;
+    save();render();return;
+  }
   if(act==="rate"){
     var v=+e.target.dataset.v;
     g.rating=(g.rating===v?null:v);
@@ -1188,6 +1200,7 @@ document.getElementById("list").addEventListener("click",function(e){
       if(!keep[k]&&absorb[k])keep[k]=absorb[k];
     });
     if((absorb.time||0)>(keep.time||0))keep.time=absorb.time;
+    if(absorb.fav)keep.fav=true;
     if(absorb.note)keep.note=keep.note?(keep.note+"\n"+absorb.note):absorb.note;
     state.games=state.games.filter(function(x){return x.id!==absorb.id;});
     // чистим записи noMerge с удалённым id
@@ -1316,7 +1329,7 @@ document.getElementById("csvFile").addEventListener("change",function(e){
       var rows=parseCSV(r.result);
       if(rows.length<2){toast(t("imp_none"));return;}
       var head=rows[0].map(function(h){return h.trim().toLowerCase();});
-      var iName=-1,iStatus=-1,iPlat=-1,iScore=-1,iSrc=-1,iGen=-1,iRel=-1,iTime=-1,iComm=-1,iSer=-1;
+      var iName=-1,iStatus=-1,iPlat=-1,iScore=-1,iSrc=-1,iGen=-1,iRel=-1,iTime=-1,iComm=-1,iSer=-1,iFav=-1;
       head.forEach(function(h,i){
         if(iName===-1&&/^(name|название|game|title|игра)$/.test(h))iName=i;
         if(iStatus===-1&&/completion|статус прохожд/.test(h))iStatus=i;
@@ -1328,6 +1341,7 @@ document.getElementById("csvFile").addEventListener("change",function(e){
         if(iTime===-1&&/^time\s*played$/.test(h))iTime=i;
         if(iComm===-1&&/^community\s*score$/.test(h))iComm=i;
         if(iSer===-1&&/^(series|серия)$/.test(h))iSer=i;
+        if(iFav===-1&&/^(favorite|избранное)$/.test(h))iFav=i;
       });
       if(iName===-1){toast(t("imp_nocol"));return;}
       var existing={};
@@ -1345,6 +1359,7 @@ document.getElementById("csvFile").addEventListener("change",function(e){
         var tsec=iTime>-1?(parseInt(rows[i][iTime],10)||0):0;
         var cs=iComm>-1?(parseInt(rows[i][iComm],10)||0):0;
         var ser=iSer>-1?(rows[i][iSer]||"").split(",")[0].trim():"";
+        var fav=iFav>-1&&/^true$/i.test((rows[i][iFav]||"").trim());
         var rating=null;
         if(iScore>-1){
           var sc=parseFloat(rows[i][iScore]);
@@ -1367,11 +1382,12 @@ document.getElementById("csvFile").addEventListener("change",function(e){
           if(tsec>(g.time||0))g.time=tsec; // наигранное время только растёт
           if(cs)g.cs=cs; // народная оценка — всегда свежая из CSV
           if(ser)g.series=ser; // серия — приоритет у Playnite
+          if(fav)g.fav=true; // избранное из Playnite добавляет, но не снимает
         }else{
           var ng={id:state.nextId++,name:name,status:st,
             years:st==="done"?[0]:[], // импортированные прохождения — в «Давно»
             platform:plat||null,rating:rating,source:src||null,
-            genres:genres||null,rel:rel||null,time:tsec||null,cs:cs||null,series:ser||null};
+            genres:genres||null,rel:rel||null,time:tsec||null,cs:cs||null,series:ser||null,fav:fav||undefined};
           state.games.push(ng);existing[key]=ng;added++;
         }
       }
@@ -1519,7 +1535,7 @@ function applyLang(){
   statSpans[2].textContent=t("stat_done");
   document.querySelectorAll(".tab").forEach(function(tb){
     var f=tb.dataset.f;
-    tb.textContent=f==="all"?t("tab_all"):(f==="catalog"?t("tab_catalog"):stLabel(f));
+    tb.textContent=f==="all"?t("tab_all"):(f==="catalog"?t("tab_catalog"):(f==="fav"?t("tab_fav"):stLabel(f)));
   });
   document.getElementById("search").placeholder=t("search_ph");
   document.getElementById("addBtn").textContent=t("add_btn");
