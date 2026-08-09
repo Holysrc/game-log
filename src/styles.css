@@ -331,7 +331,7 @@
   .rgold{color:var(--gold)}
   .rstars{color:var(--gold);letter-spacing:.12em;text-shadow:0 1px 2px rgba(0,0,0,.5)}
   .rstars .off{color:var(--border-dim);opacity:.55}
-  .rgroup{margin-top:12px;padding-top:10px;border-top:1px solid rgba(201,211,238,.25)}
+  .rgroup{margin-top:12px;padding-top:12px;border-top:1px solid rgba(201,211,238,.25)}
   .rhead{
     font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
     letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;color:var(--gold);
