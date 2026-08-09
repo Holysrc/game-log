@@ -114,6 +114,16 @@
     color:var(--text);padding:9px 12px;font-size:.95rem;
   }
   .bar input::placeholder{color:#6a78ac}
+  .searchwrap{position:relative;flex:1;display:flex}
+  .searchwrap input{width:100%;padding-right:36px}
+  #clearSearch{
+    position:absolute;right:4px;top:50%;transform:translateY(-50%);
+    border:none;background:none;color:var(--text-dim);cursor:pointer;
+    font-size:1rem;padding:8px 10px;line-height:1;
+  }
+  #clearSearch:active{color:var(--gold)}
+  /* прячем нативный крестик, чтобы не задвоился */
+  #search::-webkit-search-cancel-button{display:none}
   .bar input:focus{outline:none;border-color:var(--gold)}
   .btn{
     border:1.5px solid var(--border-dim);border-radius:8px;background:rgba(10,16,48,.6);
@@ -324,7 +334,10 @@
 </nav>
 
 <div class="bar">
-  <input id="search" type="search" placeholder="Поиск по играм…" autocomplete="off">
+  <span class="searchwrap">
+    <input id="search" type="search" placeholder="Поиск по играм…" autocomplete="off">
+    <button id="clearSearch" aria-label="Очистить" hidden>✕</button>
+  </span>
   <button class="btn gold" id="addBtn">+ Добавить</button>
 </div>
 
@@ -886,9 +899,19 @@ document.getElementById("tabs").addEventListener("click",function(e){
 });
 
 var searchTimer=null;
+function syncClearBtn(){
+  document.getElementById("clearSearch").hidden=!document.getElementById("search").value;
+}
 document.getElementById("search").addEventListener("input",function(e){
+  syncClearBtn();
   clearTimeout(searchTimer);
   searchTimer=setTimeout(function(){query=e.target.value;render();},150);
+});
+document.getElementById("clearSearch").addEventListener("click",function(){
+  var inp=document.getElementById("search");
+  inp.value="";query="";
+  syncClearBtn();render();
+  inp.focus();
 });
 
 function addGame(name){
@@ -1016,6 +1039,7 @@ document.getElementById("list").addEventListener("click",function(e){
   if(act==="serfilter"){
     query=g.series;
     document.getElementById("search").value=g.series;
+    syncClearBtn();
     render();return;
   }
   if(!act){
@@ -1445,6 +1469,7 @@ document.getElementById("resetNoMergeBtn").addEventListener("click",function(){
 document.getElementById("nodataBtn").addEventListener("click",function(){
   document.getElementById("search").value="#nodata";
   query="#nodata";
+  syncClearBtn();
   document.getElementById("syncPanel").hidden=true;
   render();
 });
