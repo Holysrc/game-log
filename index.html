@@ -65,6 +65,9 @@
   .gear:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
   .sync{margin-top:12px;display:grid;gap:7px;padding-top:10px;border-top:1px solid rgba(201,211,238,.25)}
   .sync[hidden]{display:none}
+  .sync>*{min-width:0}
+  .sync .row2{display:flex;gap:7px;flex-wrap:wrap}
+  .sync .row2 .btn{flex:1 1 auto;min-width:0}
   .sync input{
     background:rgba(6,10,34,.7);border:1.5px solid var(--border-dim);border-radius:8px;
     color:var(--text);padding:8px 11px;font-size:.88rem;width:100%;
@@ -83,8 +86,6 @@
   .noteinput:focus{outline:none;border-color:var(--gold)}
   .noteinput::placeholder{color:#6a78ac}
   .sync .hint{font-size:.72rem;color:var(--text-dim);line-height:1.5}
-  .sync .row2{display:flex;gap:7px}
-  .sync .row2 .btn{flex:1}
 
   /* ---- tabs ---- */
   .tabs{display:flex;gap:6px;margin:14px 0 10px;overflow-x:auto;scrollbar-width:none}
