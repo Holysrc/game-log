@@ -278,6 +278,7 @@
   .actions select.gold{border-color:var(--gold);color:var(--gold)}
   .actions .del{border-color:var(--danger);color:var(--danger);margin-left:auto}
   .mpair{display:inline-flex;gap:4px;align-items:stretch}
+  .xmark{align-self:center;color:var(--gold);font-size:1rem;padding:0 2px}
   .mpair .nomerge{padding:7px 9px;color:var(--text-dim)}
   .mchoose{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;
     font-size:.8rem;color:var(--text-dim)}
@@ -682,12 +683,14 @@ function cardHTML(g,ctx){
     var oldOpt=g.years.indexOf(0)===-1?'<option value="old">'+t("long_ago")+'</option>':"";
     if(missing.length||oldOpt){
       actions+='<span class="mpair">'
-        +'<input class="platinput oldcnt" data-role="precount" type="number" min="1" max="99" value="1" title="×'+t("times").trim()+'">'
         +'<select data-act="addyearsel" class="gold">'
         +'<option value="">'+t("add_year")+'</option>'
         +missing.map(function(y){return '<option value="'+y+'">'+y+'</option>';}).join("")
         +oldOpt
-        +'</select></span>';
+        +'</select>'
+        +'<span class="xmark">×</span>'
+        +'<input class="platinput oldcnt" data-role="precount" type="number" min="1" max="99" value="1" title="'+t("times").trim()+'">'
+        +'</span>';
     }
   }else{
     var yearOpts='<option value="0"'+(+ctx===0?" selected":"")+'>'+t("long_ago")+'</option>';
@@ -1114,6 +1117,7 @@ document.getElementById("list").addEventListener("click",function(e){
     scrollToResults();return;
   }
   if(!act){
+    if(e.target.closest("input,select,textarea"))return; // поля ввода не сворачивают карточку
     var prev=openId;
     openId=(openId===key?null:key);
     mergeAsk=null;
