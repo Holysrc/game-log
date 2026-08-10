@@ -1,0 +1,24 @@
+{
+  "name": "game-log",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Game Log — personal FF-styled game tracker PWA",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --grep-invert @shots",
+    "shots": "playwright test --grep @shots",
+    "serve": "node tests/server.mjs",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build",
+    "preshots": "npm run build"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^26.2.0",
+    "cross-env": "^10.1.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.2.1",
+    "vite-plugin-singlefile": "^2.3.3"
+  }
+}
