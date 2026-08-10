@@ -277,6 +277,24 @@
 
   .card .row{display:flex;align-items:flex-start;gap:8px}
   .card .name{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-size:.98rem}
+  /* in-place rename: the open card's title is the edit field */
+  .titleedit{
+    flex:1 1 auto;min-width:0;background:none;border:none;
+    border-bottom:1px dashed var(--border-dim);border-radius:0;
+    color:var(--text);font-size:.98rem;font-family:inherit;padding:0 0 4px;
+  }
+  .titleedit:focus{outline:none;border-bottom:1px dashed var(--gold)}
+  /* the ⚑ toggle stands apart from the action buttons */
+  .favtoggle{
+    flex:0 0 auto;min-width:44px;min-height:44px;margin-top:-8px;
+    border:1.5px solid var(--border-dim);border-radius:8px;background:none;
+    color:var(--border-dim);font-size:1.05rem;cursor:pointer;line-height:1;
+  }
+  .favtoggle.on{
+    color:var(--gold);border-color:var(--gold);background:rgba(var(--gold-rgb),.12);
+    text-shadow:0 1px 3px rgba(0,0,0,.6);
+  }
+  .favtoggle:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   .card .row .badge{margin-left:auto;flex-shrink:0}
   .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
   .favmark{flex:0 0 auto;color:var(--gold);font-size:.95rem;
@@ -347,6 +365,20 @@
   }
   .actions select.gold{border-color:var(--gold);color:var(--gold)}
   .actions .del{border-color:var(--danger);color:var(--danger);margin-left:auto}
+  /* Playnite-imported fields live in their own labelled inset */
+  .pngroup{
+    width:100%;border:1px dashed var(--border-dim);border-radius:8px;
+    padding:8px 12px 12px;display:grid;gap:4px;background:rgba(var(--ink1),.35);
+  }
+  .pnhead{
+    font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;color:var(--text-dim);
+  }
+  .pnfield{display:flex;align-items:center;gap:8px;min-height:44px}
+  .pnfield>span{flex:0 0 28%;color:var(--text-dim);font-size:.82rem;letter-spacing:.02em}
+  .pnfield .sugwrap{flex:1;display:flex;min-width:0}
+  .pnfield .sugwrap input{width:100%}
+  .pnfield>input{flex:1;min-width:0}
   .mpair{display:inline-flex;gap:4px;align-items:stretch}
   .xmark{align-self:center;color:var(--gold);font-size:1rem;padding:0 2px}
   .mpair .nomerge{padding:8px;color:var(--text-dim)}
@@ -524,8 +556,16 @@
     .viewtoggle .btn.active{border-color:var(--gold);color:var(--gold);
       background:rgba(var(--gold-rgb),.1)}
     :root[data-view="list"] .sec{display:block}
-    /* wide list card: chips, meta and stars share one tidy line */
-    :root[data-view="list"] .card .chips{display:inline-flex;vertical-align:middle;margin-right:12px}
-    :root[data-view="list"] .card .meta{display:inline-block;vertical-align:middle;margin:8px 12px 0 0}
-    :root[data-view="list"] .card .stars{display:inline-block;vertical-align:middle;margin-top:8px}
+    /* wide list card: big serif title left, everything else to the right */
+    :root[data-view="list"] .card .name{
+      font-size:1.7rem;line-height:1.2;font-weight:600;letter-spacing:.02em;
+      font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    }
+    :root[data-view="list"] .card .titleedit{font-size:1.7rem;line-height:1.2;
+      font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif}
+    :root[data-view="list"] .card:not(.open){text-align:right}
+    :root[data-view="list"] .card .chips{display:inline-flex;vertical-align:middle;margin-left:12px}
+    :root[data-view="list"] .card .meta{display:inline-block;vertical-align:middle;margin:8px 0 0 12px}
+    :root[data-view="list"] .card .stars{display:inline-block;vertical-align:middle;margin-top:8px;margin-left:12px}
+    :root[data-view="list"] .card .actions{text-align:left}
   }

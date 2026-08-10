@@ -71,9 +71,6 @@ function cardHTML(g: Game, ctx: number | null): string {
 
   var actions = "";
   if (open) {
-    actions += '<input class="platinput namefield" data-act="rename" placeholder="' + t("name_ph") + '" '
-      + 'value="' + esc(g.name) + '">';
-    actions += '<button class="btn' + (g.fav ? " gold" : "") + '" data-act="fav">' + (g.fav ? t("fav_off") : t("fav_on")) + '</button>';
     if (ctx === null) {
       actions += STATUS_KEYS.filter(function (s) { return s !== g.status && s !== "done"; })
         .map(function (s) {
@@ -114,16 +111,6 @@ function cardHTML(g: Game, ctx: number | null): string {
           + '</select>';
       }
     }
-    actions += '<span class="sugwrap"><input class="platinput" data-act="plat" placeholder="' + t("platform") + '" '
-      + 'value="' + (g.platform ? esc(g.platform) : "") + '"><div class="sug"></div></span>';
-    actions += '<span class="sugwrap"><input class="platinput" data-act="src" placeholder="' + t("launcher") + '" '
-      + 'value="' + (g.source ? esc(g.source) : "") + '"><div class="sug"></div></span>';
-    actions += '<input class="platinput oldcnt" data-act="rel" type="number" min="1970" max="2030" placeholder="' + t("rel_ph") + '" '
-      + 'value="' + (g.rel || "") + '" style="width:110px">';
-    actions += '<input class="platinput" data-act="genres" placeholder="' + t("genres_ph") + '" '
-      + 'value="' + (g.genres ? esc(g.genres) : "") + '" style="width:160px">';
-    actions += '<span class="sugwrap"><input class="platinput" data-act="series" placeholder="' + t("series_ph") + '" '
-      + 'value="' + (g.series ? esc(g.series) : "") + '" style="width:150px"><div class="sug"></div></span>';
     if (g.status === "done" || g.status === "dropped" || g.years.length) {
       actions += '<div class="rate" role="group">';
       for (var r = 1; r <= 5; r++) {
@@ -133,6 +120,25 @@ function cardHTML(g: Game, ctx: number | null): string {
       actions += '</div>';
     }
     actions += '<textarea class="noteinput" data-act="note" placeholder="' + t("note_ph") + '">' + (g.note ? esc(g.note) : "") + '</textarea>';
+    // Playnite-параметры отделены от «своих» полей: свой блок с подписями
+    var pnField = function (label: string, inner: string): string {
+      return '<label class="pnfield"><span>' + label + '</span>' + inner + '</label>';
+    };
+    actions += '<div class="pngroup"><div class="pnhead">' + t("head_playnite") + '</div>'
+      + pnField(t("platform"),
+        '<span class="sugwrap"><input class="platinput" data-act="plat" value="'
+        + (g.platform ? esc(g.platform) : "") + '"><div class="sug"></div></span>')
+      + pnField(t("launcher"),
+        '<span class="sugwrap"><input class="platinput" data-act="src" value="'
+        + (g.source ? esc(g.source) : "") + '"><div class="sug"></div></span>')
+      + pnField(t("rel_ph"),
+        '<input class="platinput" data-act="rel" type="number" min="1970" max="2030" value="' + (g.rel || "") + '">')
+      + pnField(t("genres_ph"),
+        '<input class="platinput" data-act="genres" value="' + (g.genres ? esc(g.genres) : "") + '">')
+      + pnField(t("series_ph"),
+        '<span class="sugwrap"><input class="platinput" data-act="series" value="'
+        + (g.series ? esc(g.series) : "") + '"><div class="sug"></div></span>')
+      + '</div>';
     // возможные дубли: сравниваем названия без «шумовых» слов изданий
     var EDITION_WORDS = ["goty", "game", "of", "the", "year", "edition", "remastered", "remaster",
       "definitive", "complete", "deluxe", "enhanced", "directors", "director", "cut", "hd",
@@ -209,11 +215,18 @@ function cardHTML(g: Game, ctx: number | null): string {
   chips += histChip + noteChip;
   var chipsView = chips ? '<div class="chips">' + chips + '</div>' : "";
 
+  // open card: the title itself becomes an in-place rename field,
+  // the ⚑ toggle sits apart in the header row
+  var titleView = open
+    ? '<input class="titleedit" data-act="rename" value="' + esc(g.name) + '" aria-label="' + t("name_ph") + '">'
+    : '<span class="name">' + esc(g.name) + '</span>';
+  var favView = open
+    ? '<button class="favtoggle' + (g.fav ? " on" : "") + '" data-act="fav" aria-label="'
+      + (g.fav ? t("fav_off") : t("fav_on")) + '" title="' + (g.fav ? t("fav_off") : t("fav_on")) + '">⚑</button>'
+    : (g.fav ? '<span class="favmark" title="⚑">⚑</span>' : "");
   return '<div class="card win ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + (ctx === null ? "s" : ctx) + '">'
     + '<span class="cursor">▶</span>'
-    + '<div class="row"><span class="name">' + esc(g.name) + '</span>'
-    + (g.fav ? '<span class="favmark" title="⚑">⚑</span>' : "")
-    + badge + '</div>'
+    + '<div class="row">' + titleView + favView + badge + '</div>'
     + chipsView
     + metaView
     + starsView

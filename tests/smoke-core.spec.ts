@@ -38,7 +38,7 @@ test.describe("tabs & stats", () => {
     await card.locator(`button[data-act="status"]`, { hasText: tr.playingLbl }).click();
     await expect(page.locator("#stPlaying")).toHaveText("2");
     const playingSec = page.locator(".sec", { has: page.locator(`.yearhead[data-key="playing"]`) });
-    await expect(playingSec.locator(".card", { hasText: "Beta Blade" })).toHaveCount(1);
+    await expect(playingSec.locator(".card.open .titleedit")).toHaveValue("Beta Blade");
   });
 });
 
@@ -71,9 +71,8 @@ test.describe("year groups", () => {
   test("remove year returns game out of the group", async ({ page }, ti) => {
     const { tr } = meta(ti);
     await openApp(page, ti, tinyState());
-    const card = page.locator(`.card[data-ctx="0"]`, { hasText: "Epsilon Echo" });
-    await card.locator(".name").click();
-    await card.locator(`button[data-act="rmyear"]`).click();
+    await page.locator(`.card[data-ctx="0"]`, { hasText: "Epsilon Echo" }).locator(".name").click();
+    await page.locator(`.card.open button[data-act="rmyear"]`).click();
     await expect(page.locator(".yearhead", { hasText: tr.longAgo })).toHaveCount(0);
     // still beaten in 2023
     const sec2023 = page.locator(".sec", { has: page.locator(`.yearhead[data-key="y2023"]`) });
@@ -100,15 +99,14 @@ test("«+ Beaten in…» works from a year-group card too", async ({ page }, ti)
   const { tr } = meta(ti);
   await openApp(page, ti, tinyState());
   const cy = new Date().getFullYear();
-  const card = page.locator(`.card[data-ctx="2024"]`, { hasText: "Delta Drift" });
-  await card.locator(".name").click();
-  await card.locator(`select[data-act="addyearsel"]`).selectOption(String(cy));
+  await page.locator(`.card[data-ctx="2024"]`, { hasText: "Delta Drift" }).locator(".name").click();
+  await page.locator(`.card.open select[data-act="addyearsel"]`).selectOption(String(cy));
   await expect(toast(page)).toContainText(`${tr.addedTo} ${cy}`);
   const sec = page.locator(".sec", { has: page.locator(`.yearhead[data-key="y${cy}"]`) });
   await expect(sec.locator(".card", { hasText: "Delta Drift" })).toHaveCount(1);
-  // the 2024 run is untouched
+  // the 2024 run is untouched (the card there is still open → match by id)
   const sec24 = page.locator(".sec", { has: page.locator(`.yearhead[data-key="y2024"]`) });
-  await expect(sec24.locator(".card", { hasText: "Delta Drift" })).toHaveCount(1);
+  await expect(sec24.locator(`.card[data-id="4"]`)).toHaveCount(1);
 });
 
 test("stars render, community score chip, rating editable", async ({ page }, ti) => {
@@ -117,9 +115,8 @@ test("stars render, community score chip, rating editable", async ({ page }, ti)
   await expect(delta.locator(".cs")).toHaveText("91");
   await expect(delta.locator(".cs")).toHaveClass(/hi/);
   await delta.locator(".name").click();
-  await delta.locator(`.rate .star`).nth(4).click();
-  const after = page.locator(`.card[data-ctx="2024"]`, { hasText: "Delta Drift" });
-  await expect(after.locator(".rate .star.on")).toHaveCount(5);
+  await page.locator(".card.open .rate .star").nth(4).click();
+  await expect(page.locator(".card.open .rate .star.on")).toHaveCount(5);
 });
 
 test("note saved and 📝 chip appears", async ({ page }, ti) => {
@@ -127,8 +124,9 @@ test("note saved and 📝 chip appears", async ({ page }, ti) => {
   const card = await openCard(page, "Beta Blade");
   await card.locator("textarea[data-act='note']").fill("test note here");
   await card.locator("textarea[data-act='note']").blur();
-  const noteChips = page.locator(`.card`, { hasText: "Beta Blade" }).locator(".plat", { hasText: "📝" });
-  await expect(noteChips.first()).toBeVisible();
+  await expect(
+    page.locator(".card.open .plat", { hasText: "📝" }).first()
+  ).toBeVisible();
 });
 
 test("custom suggestions work by tap for platform, launcher and series", async ({ page }, ti) => {
@@ -145,13 +143,9 @@ test("custom suggestions work by tap for platform, launcher and series", async (
   await card.locator(`input[data-act="series"]`).focus();
   await card.locator(".sug .sugbtn", { hasText: /^Souls$/ }).first().click();
   await expect(card.locator(`input[data-act="series"]`)).toHaveValue("Souls");
-  // chips reflect the picks
-  await expect(
-    page.locator(".card", { hasText: "Gamma Grove" }).locator(".plat", { hasText: /^PC$/ })
-  ).toHaveCount(1);
-  await expect(
-    page.locator(".card", { hasText: "Gamma Grove" }).locator(".ser", { hasText: /Souls/ })
-  ).toHaveCount(1);
+  // chips reflect the picks on the still-open card
+  await expect(page.locator(".card.open .plat", { hasText: /^PC$/ })).toHaveCount(1);
+  await expect(page.locator(".card.open .ser", { hasText: /Souls/ })).toHaveCount(1);
 });
 
 test("series chip ❖ filters and shows series summary", async ({ page }, ti) => {
@@ -166,15 +160,49 @@ test("series chip ❖ filters and shows series summary", async ({ page }, ti) =>
   await expect(sum.locator(".n").nth(1)).toHaveText("1"); // beaten
 });
 
-test("favorite toggles and shows ⚑", async ({ page }, ti) => {
+test("favorite ⚑ toggle in header row keeps on/off states", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
   const card = await openCard(page, "Beta Blade");
-  await card.locator(`button[data-act="fav"]`).click();
-  await expect(
-    page.locator(".card", { hasText: "Beta Blade" }).locator(".favmark").first()
-  ).toBeVisible();
+  const flag = card.locator(".favtoggle");
+  await expect(flag).toBeVisible();
+  await expect(flag).not.toHaveClass(/on/);
+  await flag.click();
+  await expect(page.locator(".card.open .favtoggle")).toHaveClass(/on/);
+  // closed card shows the static ⚑ mark
+  await page.locator(".card.open .titleedit").blur();
   await page.locator(".tab").nth(6).click();
   await expect(page.locator(".card")).toHaveCount(2);
+  await expect(
+    page.locator(".card", { hasText: "Beta Blade" }).locator(".favmark")
+  ).toBeVisible();
+});
+
+test("tap on the open card's title renames the game in place", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const card = await openCard(page, "Beta Blade");
+  const title = card.locator(".titleedit");
+  await expect(title).toHaveValue("Beta Blade");
+  await title.fill("Beta Blade Remastered");
+  await title.blur();
+  await expect(
+    page.locator(".card.open .titleedit")
+  ).toHaveValue("Beta Blade Remastered");
+  const names = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("gamelog-v1")!).games.map((g: any) => g.name)
+  );
+  expect(names).toContain("Beta Blade Remastered");
+  expect(names).not.toContain("Beta Blade");
+});
+
+test("Playnite fields sit in their own labelled group", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const card = await openCard(page, "Beta Blade");
+  const pn = card.locator(".pngroup");
+  await expect(pn).toBeVisible();
+  await expect(pn.locator(".pnfield")).toHaveCount(5); // platform, launcher, release, genres, series
+  await expect(pn.locator(`input[data-act="plat"]`)).toHaveValue("PS5");
+  // «свои» поля (заметка, оценка) — вне блока Playnite
+  await expect(pn.locator("textarea")).toHaveCount(0);
 });
 
 test("sorts apply and persist", async ({ page }, ti) => {

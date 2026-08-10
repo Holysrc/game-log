@@ -60,7 +60,7 @@ test.describe("merge duplicates ⇆", () => {
     await page.locator(".tab").nth(5).click();
     const ds = await openCard(page, "Dark Souls 2");
     await expect(ds.locator(`button[data-act="mergeask"]`)).toHaveCount(0);
-    await ds.locator(".name").click(); // close
+    await ds.locator(".badge").click(); // close (title is an input now)
     const ff = await openCard(page, "Final Fantasy VIII");
     await expect(ff.locator(`button[data-act="mergeask"]`)).toHaveCount(0);
   });
