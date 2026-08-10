@@ -79,7 +79,12 @@ function renderPeriod(p: Period): string {
   var html = "";
   html += row(t("res_beaten"), String(games.length));
   if (runs > games.length) html += row(t("res_runs"), String(runs));
-  html += row(t("res_hours"), hours ? fmtHours(hours) : t("res_no_data"));
+  // `time` comes from Playnite as a LIFETIME total per game — for a single
+  // year it must not read as "hours played that year"
+  html += row(
+    p === "all" ? t("res_hours") : t("res_hours_total"),
+    hours ? fmtHours(hours) : t("res_no_data")
+  );
   html += row(
     t("res_avg"),
     rated.length

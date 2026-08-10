@@ -29,6 +29,8 @@ test("year metrics: beaten, hours, rating, game of the year", async ({ page }, t
   // 2024: only Delta Drift (10h, ★4, Racing, Switch, Steam)
   const body = page.locator("#resBody");
   await expect(body.locator(".rrow", { hasText: tr.resBeaten }).locator(".rval")).toHaveText("1");
+  // Playnite time is a lifetime total → the year view must say so
+  await expect(body.locator(".rrow", { hasText: tr.resHoursTotal })).toHaveCount(1);
   await expect(body.locator(".rrow", { hasText: tr.resGoty })).toContainText("Delta Drift");
   await expect(body.locator(".rrow", { hasText: tr.resLongest })).toContainText("Delta Drift");
   await expect(body.locator(".rbar", { hasText: "Steam" })).toBeVisible();
@@ -43,6 +45,9 @@ test("«all time» aggregates runs, picks longest-by-hours on rating tie", async
   await expect(body.locator(".rrow", { hasText: tr.resBeaten }).locator(".rval")).toHaveText("5");
   // total runs 8 (Epsilon: Давно ×3 + 2023)
   await expect(body.locator(".rrow", { hasText: tr.resRuns }).locator(".rval")).toHaveText("8");
+  // all-time keeps the plain hours label
+  await expect(body.locator(".rrow", { hasText: tr.resHoursTotal })).toHaveCount(0);
+  await expect(body.locator(".rrow", { hasText: tr.resHours })).toHaveCount(1);
   // rating tie 5★ → Skyrim wins by 100h
   await expect(body.locator(".rrow.wide").first()).toContainText("Skyrim");
   await expect(body.locator(".rrow", { hasText: tr.resSeriesAll })).toContainText("Final Fantasy");
