@@ -79,8 +79,18 @@ test.describe("desktop list/grid view toggle", () => {
 
     await page.reload();
     await expect(page.locator("html")).toHaveAttribute("data-view", "list");
+
+    // collapsed cards expose the ⚑ toggle in list view; tap flags without opening
+    const beta = page.locator(".card", { hasText: "Beta Blade" }).first();
+    await expect(beta.locator(".favtoggle")).toBeVisible();
+    await beta.locator(".favtoggle").click();
+    await expect(beta.locator(".favtoggle")).toHaveClass(/on/);
+    await expect(beta).not.toHaveClass(/open/);
+
     await page.locator(`#viewToggle .btn[data-view="grid"]`).click();
     expect(await page.evaluate(() => document.documentElement.getAttribute("data-view"))).toBeNull();
+    // grid view hides the collapsed-card flag button again
+    await expect(page.locator(".card", { hasText: "Alpha Quest" }).first().locator(".favtoggle")).toBeHidden();
   });
 });
 

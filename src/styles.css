@@ -365,20 +365,31 @@
   }
   .actions select.gold{border-color:var(--gold);color:var(--gold)}
   .actions .del{border-color:var(--danger);color:var(--danger);margin-left:auto}
-  /* Playnite-imported fields live in their own labelled inset */
+  /* Playnite-imported fields live behind their own spoiler */
   .pngroup{
     width:100%;border:1px dashed var(--border-dim);border-radius:8px;
-    padding:8px 12px 12px;display:grid;gap:4px;background:rgba(var(--ink1),.35);
+    padding:0 12px;display:grid;background:rgba(var(--ink1),.35);
   }
+  .pngroup.pnopen{padding-bottom:12px}
   .pnhead{
+    display:flex;align-items:center;gap:8px;min-height:44px;width:100%;
+    border:none;background:none;cursor:pointer;text-align:left;padding:0;
     font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
     letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;color:var(--text-dim);
   }
-  .pnfield{display:flex;align-items:center;gap:8px;min-height:44px}
+  .pnhead .caret{color:var(--gold);font-size:.7rem;transition:transform .15s}
+  .pngroup:not(.pnopen) .pnhead .caret{transform:rotate(-90deg)}
+  @media (prefers-reduced-motion:reduce){.pnhead .caret{transition:none}}
+  .pnhead:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+  .pnfields{display:grid;gap:4px}
+  .pnfields[hidden]{display:none}
+  .pnfield{display:flex;align-items:center;gap:8px;min-height:44px;min-width:0}
   .pnfield>span{flex:0 0 28%;color:var(--text-dim);font-size:.82rem;letter-spacing:.02em}
   .pnfield .sugwrap{flex:1;display:flex;min-width:0}
   .pnfield .sugwrap input{width:100%}
-  .pnfield>input{flex:1;min-width:0}
+  .pnfield>input{flex:1;min-width:0;width:auto}
+  /* collapsed cards: flag button hidden outside desktop list view */
+  .favtoggle.listonly{display:none}
   .mpair{display:inline-flex;gap:4px;align-items:stretch}
   .xmark{align-self:center;color:var(--gold);font-size:1rem;padding:0 2px}
   .mpair .nomerge{padding:8px;color:var(--text-dim)}
@@ -563,9 +574,14 @@
     }
     :root[data-view="list"] .card .titleedit{font-size:1.7rem;line-height:1.2;
       font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif}
-    :root[data-view="list"] .card:not(.open){text-align:right}
-    :root[data-view="list"] .card .chips{display:inline-flex;vertical-align:middle;margin-left:12px}
-    :root[data-view="list"] .card .meta{display:inline-block;vertical-align:middle;margin:8px 0 0 12px}
-    :root[data-view="list"] .card .stars{display:inline-block;vertical-align:middle;margin-top:8px;margin-left:12px}
-    :root[data-view="list"] .card .actions{text-align:left}
+    /* everything stays LEFT under the title; only ⚑ and badge sit right */
+    :root[data-view="list"] .card .chips{display:inline-flex;vertical-align:middle;margin-right:12px}
+    :root[data-view="list"] .card .meta{display:inline-block;vertical-align:middle;margin:8px 12px 0 0}
+    :root[data-view="list"] .card .stars{display:inline-block;vertical-align:middle;margin-top:8px}
+    /* collapsed card shows the interactive flag in list view */
+    :root[data-view="list"] .card:not(.open) .favtoggle.listonly{
+      display:inline-grid;place-content:center;margin-top:0}
+    :root[data-view="list"] .card:not(.open) .favmark{display:none}
+    /* Playnite spoiler fields in two columns on wide screens */
+    .pnfields{grid-template-columns:1fr 1fr;column-gap:16px}
   }

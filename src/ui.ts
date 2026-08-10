@@ -9,6 +9,7 @@ import { esc, norm, toast } from "./util";
 
 /* ================= ui state ================= */
 export var filter = "all", query = "", openId: string | null = null, mergeAsk: any = null;
+var pnOpen = false; // Playnite spoiler state of the currently open card
 var SORTKEY = "gamelog-sort";
 var sortMode = "default";
 try { sortMode = localStorage.getItem(SORTKEY) || "default"; } catch (e) {}
@@ -120,11 +121,14 @@ function cardHTML(g: Game, ctx: number | null): string {
       actions += '</div>';
     }
     actions += '<textarea class="noteinput" data-act="note" placeholder="' + t("note_ph") + '">' + (g.note ? esc(g.note) : "") + '</textarea>';
-    // Playnite-параметры отделены от «своих» полей: свой блок с подписями
+    // Playnite-параметры отделены от «своих» полей: спойлер с подписями
     var pnField = function (label: string, inner: string): string {
       return '<label class="pnfield"><span>' + label + '</span>' + inner + '</label>';
     };
-    actions += '<div class="pngroup"><div class="pnhead">' + t("head_playnite") + '</div>'
+    actions += '<div class="pngroup' + (pnOpen ? " pnopen" : "") + '">'
+      + '<button type="button" class="pnhead" data-act="pntoggle"><span class="caret">▾</span>'
+      + t("head_playnite") + '</button>'
+      + '<div class="pnfields"' + (pnOpen ? "" : " hidden") + '>'
       + pnField(t("platform"),
         '<span class="sugwrap"><input class="platinput" data-act="plat" value="'
         + (g.platform ? esc(g.platform) : "") + '"><div class="sug"></div></span>')
@@ -138,7 +142,7 @@ function cardHTML(g: Game, ctx: number | null): string {
       + pnField(t("series_ph"),
         '<span class="sugwrap"><input class="platinput" data-act="series" value="'
         + (g.series ? esc(g.series) : "") + '"><div class="sug"></div></span>')
-      + '</div>';
+      + '</div></div>';
     // возможные дубли: сравниваем названия без «шумовых» слов изданий
     var EDITION_WORDS = ["goty", "game", "of", "the", "year", "edition", "remastered", "remaster",
       "definitive", "complete", "deluxe", "enhanced", "directors", "director", "cut", "hd",
@@ -220,10 +224,11 @@ function cardHTML(g: Game, ctx: number | null): string {
   var titleView = open
     ? '<input class="titleedit" data-act="rename" value="' + esc(g.name) + '" aria-label="' + t("name_ph") + '">'
     : '<span class="name">' + esc(g.name) + '</span>';
-  var favView = open
-    ? '<button class="favtoggle' + (g.fav ? " on" : "") + '" data-act="fav" aria-label="'
-      + (g.fav ? t("fav_off") : t("fav_on")) + '" title="' + (g.fav ? t("fav_off") : t("fav_on")) + '">⚑</button>'
-    : (g.fav ? '<span class="favmark" title="⚑">⚑</span>' : "");
+  var favBtn = '<button class="favtoggle' + (open ? "" : " listonly") + (g.fav ? " on" : "")
+    + '" data-act="fav" aria-label="' + (g.fav ? t("fav_off") : t("fav_on"))
+    + '" title="' + (g.fav ? t("fav_off") : t("fav_on")) + '">⚑</button>';
+  // collapsed card: interactive flag in list view, static mark elsewhere
+  var favView = open ? favBtn : favBtn + (g.fav ? '<span class="favmark" title="⚑">⚑</span>' : "");
   return '<div class="card win ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + (ctx === null ? "s" : ctx) + '">'
     + '<span class="cursor">▶</span>'
     + '<div class="row">' + titleView + favView + badge + '</div>'
@@ -594,11 +599,17 @@ export function wireUI(): void {
       scrollToResults();
       return;
     }
+    if (act === "pntoggle") {
+      pnOpen = !pnOpen;
+      patchCardByKey(openId);
+      return;
+    }
     if (!act) {
       if (e.target.closest("input,select,textarea")) return; // поля ввода не сворачивают карточку
       var prev = openId;
       openId = (openId === key ? null : key);
       mergeAsk = null;
+      pnOpen = false; // каждый вновь открытый слот стартует со свёрнутым Playnite
       patchCardByKey(prev);
       if (openId && openId !== prev) patchCardByKey(openId);
       return;

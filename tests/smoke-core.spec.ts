@@ -134,6 +134,7 @@ test("custom suggestions work by tap for platform, launcher and series", async (
   await openCard(page, "Gamma Grove");
   // the card must stay open after each suggestion tap
   const card = page.locator(".card.open");
+  await card.locator(".pnhead").click(); // Playnite fields live behind a spoiler
   await card.locator(`input[data-act="plat"]`).focus();
   await card.locator(".sug .sugbtn", { hasText: /^PC$/ }).first().click();
   await expect(card.locator(`input[data-act="plat"]`)).toHaveValue("PC");
@@ -194,13 +195,21 @@ test("tap on the open card's title renames the game in place", async ({ page }, 
   expect(names).not.toContain("Beta Blade");
 });
 
-test("Playnite fields sit in their own labelled group", async ({ page }, ti) => {
+test("Playnite fields sit behind a spoiler in their own group", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
   const card = await openCard(page, "Beta Blade");
   const pn = card.locator(".pngroup");
   await expect(pn).toBeVisible();
+  // collapsed by default — fields hidden until the spoiler is tapped
+  await expect(pn.locator(".pnfields")).toBeHidden();
+  await pn.locator(".pnhead").click();
+  await expect(pn.locator(".pnfields")).toBeVisible();
   await expect(pn.locator(".pnfield")).toHaveCount(5); // platform, launcher, release, genres, series
   await expect(pn.locator(`input[data-act="plat"]`)).toHaveValue("PS5");
+  // editing inside the spoiler keeps it open (state survives re-render)
+  await pn.locator(`input[data-act="genres"]`).fill("Action, RPG");
+  await pn.locator(`input[data-act="genres"]`).blur();
+  await expect(page.locator(".card.open .pnfields")).toBeVisible();
   // «свои» поля (заметка, оценка) — вне блока Playnite
   await expect(pn.locator("textarea")).toHaveCount(0);
 });

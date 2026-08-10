@@ -110,6 +110,17 @@ test.describe("@shots key screens", () => {
     await page.screenshot({ path: shot(ti, "11-list-view") });
   });
 
+  test("desktop list view: open card with Playnite spoiler", async ({ page }, ti) => {
+    test.skip(ti.project.metadata.form !== "desktop", "desktop-only");
+    await openApp(page, ti, tinyState());
+    await page.locator(`#viewToggle .btn[data-view="list"]`).click();
+    await openCard(page, "Skyrim Special Edition");
+    await page.locator(".card.open .pnhead").click();
+    await expect(page.locator(".card.open .pnfields")).toBeVisible();
+    await page.locator(".card.open .actions").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: shot(ti, "11b-list-card-open") });
+  });
+
   test("Sega Genesis theme", async ({ page }, ti) => {
     await openApp(page, ti, makeState(300));
     await page.locator("#gearBtn").click();
