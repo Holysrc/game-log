@@ -12,7 +12,7 @@ test.describe("tabs & stats", () => {
     await expect(page.locator("#stDone")).toHaveText("5");
 
     const tabs = page.locator(".tab");
-    await expect(tabs).toHaveCount(8);
+    await expect(tabs).toHaveCount(9); // 8 tabs + conditional «no data» chip
     for (let i = 0; i < 8; i++) await expect(tabs.nth(i)).toHaveText(tr.tabs[i]);
 
     await tabs.nth(1).click(); // playing
@@ -214,4 +214,25 @@ test.describe("search", () => {
 test("empty app shows empty state", async ({ page }, ti) => {
   await openApp(page, ti, null);
   await expect(page.locator(".empty")).toBeVisible();
+});
+
+test("«no data» chip shows count, filters on tap, hides when clean", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const chip = page.locator("#nodataChip");
+  await expect(chip).toBeVisible(); // Gamma Grove has no source/genres/cs
+  await expect(chip).toContainText("1");
+  await chip.click();
+  await expect(page.locator("#search")).toHaveValue("#nodata");
+  await expect(page.locator(".card")).toHaveCount(1);
+  await expect(page.locator(".card .name")).toHaveText("Gamma Grove");
+  // fill the gap → chip disappears on next render
+  await page.evaluate(() => {
+    const st = JSON.parse(localStorage.getItem("gamelog-v1")!);
+    const g = st.games.find((x: any) => x.name === "Gamma Grove");
+    g.source = "Steam";
+    g.genres = "RPG";
+    localStorage.setItem("gamelog-v1", JSON.stringify(st));
+  });
+  await page.reload();
+  await expect(page.locator("#nodataChip")).toBeHidden();
 });

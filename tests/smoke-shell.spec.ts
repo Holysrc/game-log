@@ -99,10 +99,13 @@ test.describe("mobile: no horizontal overflow anywhere", () => {
     await expectNoHorizontalOverflow(page);
   });
 
-  test("settings panel open", async ({ page }, ti) => {
+  test("settings panel open with sync spoiler and help", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
     await page.locator("#gearBtn").click();
     await expect(page.locator("#syncPanel")).toBeVisible();
+    await page.locator("#syncSpoiler").click();
+    await page.locator("#syncHelpBtn").click();
+    await expect(page.locator("#syncHelp")).toBeVisible();
     await expectNoHorizontalOverflow(page);
   });
 

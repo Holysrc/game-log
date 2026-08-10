@@ -34,6 +34,7 @@ test("connect via settings pulls newer remote state", async ({ page }, ti) => {
     }
   });
   await page.locator("#gearBtn").click();
+  await page.locator("#syncSpoiler").click(); // sync settings live under a spoiler
   await page.locator("#ghToken").fill("test-token");
   await page.locator("#ghGist").fill(GIST);
   await page.locator("#syncConnect").click();
@@ -92,6 +93,7 @@ test("Apps Script (Drive) sync connects and pulls newer state", async ({ page },
     }
   });
   await page.locator("#gearBtn").click();
+  await page.locator("#syncSpoiler").click();
   await page.locator("#gsUrl").fill(gsUrl);
   await page.locator("#syncConnect").click();
   await expect(page.locator("#stPlaying")).toHaveText("1");

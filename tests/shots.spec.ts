@@ -36,6 +36,11 @@ test.describe("@shots key screens", () => {
     await page.locator("#gearBtn").click();
     await expect(page.locator("#syncPanel")).toBeVisible();
     await page.screenshot({ path: shot(ti, "04-settings") });
+    // sync spoiler expanded with the ⓘ help open
+    await page.locator("#syncSpoiler").click();
+    await page.locator("#syncHelpBtn").click();
+    await expect(page.locator("#syncHelp")).toBeVisible();
+    await page.screenshot({ path: shot(ti, "04b-settings-sync") });
   });
 
   test("series search summary", async ({ page }, ti) => {

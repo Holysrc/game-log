@@ -125,6 +125,44 @@
     color:var(--text);padding:4px 8px;font-size:.78rem;cursor:pointer}
   .sugbtn:active{border-color:var(--gold);color:var(--gold)}
   .sync .hint{font-size:.72rem;color:var(--text-dim);line-height:1.5}
+  .bakrow select{flex:1 1 auto;width:auto;min-width:0}
+  .bakrow .btn{flex:0 0 auto}
+  /* labelled setting rows: Язык / Тема */
+  .setrow{display:flex;align-items:center;gap:8px}
+  .setrow .setlabel{flex:0 0 24%;color:var(--text-dim);font-size:.85rem;letter-spacing:.02em}
+  .setrow select{flex:1;width:auto;min-width:0}
+  /* sync spoiler + info */
+  .sprow{display:flex;align-items:center;gap:4px}
+  .spoiler{
+    flex:1;display:flex;align-items:center;gap:8px;min-height:44px;
+    border:none;background:none;cursor:pointer;padding:4px;text-align:left;
+    font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;color:var(--gold);
+  }
+  .spoiler .caret{color:var(--gold);font-size:.7rem;transition:transform .15s}
+  .spoiler.col .caret{transform:rotate(-90deg)}
+  @media (prefers-reduced-motion:reduce){.spoiler .caret{transition:none}}
+  .spoiler:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+  .infobtn{
+    flex:0 0 auto;min-width:44px;min-height:44px;border:none;background:none;
+    color:var(--blue);font-size:1rem;cursor:pointer;
+  }
+  .infobtn:active{color:var(--gold)}
+  .infobtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
+  .synchelp{
+    border:1px dashed var(--border-dim);border-radius:8px;padding:8px 12px;
+    display:grid;gap:8px;font-size:.78rem;color:var(--text-dim);line-height:1.5;
+  }
+  .synchelp[hidden],.syncbody[hidden]{display:none}
+  .syncbody{display:grid;gap:8px}
+  .sethead{
+    font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
+    letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;color:var(--gold);
+    margin-top:4px;
+  }
+  /* «no Playnite data» attention chip in the tabs row */
+  .nodatachip{border-style:dashed;border-color:var(--gold);color:var(--gold)}
+  .nodatachip[hidden]{display:none}
 
   /* ---- tabs ---- */
   .tabs{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 8px}

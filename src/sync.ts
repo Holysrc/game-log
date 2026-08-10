@@ -5,6 +5,7 @@ import { state, replaceState, migrate } from "./data";
 import { t } from "./i18n";
 import { toast } from "./util";
 import { render, setOpenId, refreshNoMergeBtn } from "./ui";
+import { refreshBackupUI } from "./backup";
 
 /* ---- файл данных (game-log.json в облачной папке) ---- */
 export var fileHandle: any = null;
@@ -142,10 +143,23 @@ export function pullRemote(): void {
 
 /* ---- панель синхронизации ---- */
 export function wireSyncPanel(): void {
+  // sync settings live under a spoiler; ⓘ toggles the short how-to
+  document.getElementById("syncSpoiler")!.addEventListener("click", function () {
+    var body = document.getElementById("syncBody") as any;
+    var sp = document.getElementById("syncSpoiler")!;
+    body.hidden = !body.hidden;
+    sp.classList.toggle("col", body.hidden);
+    sp.setAttribute("aria-expanded", String(!body.hidden));
+  });
+  document.getElementById("syncHelpBtn")!.addEventListener("click", function () {
+    var help = document.getElementById("syncHelp") as any;
+    help.hidden = !help.hidden;
+  });
   document.getElementById("gearBtn")!.addEventListener("click", function () {
     var p = document.getElementById("syncPanel") as any;
     p.hidden = !p.hidden;
     refreshNoMergeBtn();
+    refreshBackupUI();
     if (!p.hidden) {
       (document.getElementById("gsUrl") as HTMLInputElement).value = syncCfg.gs || "";
       (document.getElementById("ghToken") as HTMLInputElement).value = syncCfg.token || "";

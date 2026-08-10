@@ -301,6 +301,14 @@ export function render(): void {
     html += section(filter, filter === "catalog" ? t("tab_catalog") : (filter === "fav" ? t("tab_fav") : stLabel(filter)), shown, null);
   }
   document.getElementById("list")!.innerHTML = html;
+
+  // «no Playnite data» chip: visible only while such games exist
+  var chip = document.getElementById("nodataChip");
+  if (chip) {
+    var nd = state.games.filter(function (g) { return !g.source && !g.genres && !g.cs; }).length;
+    (chip as any).hidden = !nd;
+    if (nd) chip.textContent = "⚠ " + t("nodata_chip") + " · " + nd;
+  }
   (window as any).__lastRenderMs = performance.now() - t0; // perf budget probe (§7)
 }
 
@@ -493,6 +501,15 @@ export function wireUI(): void {
   document.getElementById("tabs")!.addEventListener("click", function (e: any) {
     var tb = e.target.closest(".tab");
     if (!tb) return;
+    if (tb.id === "nodataChip") {
+      // filter shortcut, not a tab: run the #nodata search
+      (document.getElementById("search") as HTMLInputElement).value = "#nodata";
+      query = "#nodata";
+      syncClearBtn();
+      render();
+      scrollToResults();
+      return;
+    }
     filter = tb.dataset.f;
     openId = null;
     document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("active", x === tb); });
@@ -799,14 +816,6 @@ export function wireUI(): void {
     refreshNoMergeBtn();
     toast(t("nomerge_reset"));
   });
-  document.getElementById("nodataBtn")!.addEventListener("click", function () {
-    (document.getElementById("search") as HTMLInputElement).value = "#nodata";
-    query = "#nodata";
-    syncClearBtn();
-    (document.getElementById("syncPanel") as any).hidden = true;
-    render();
-    scrollToResults();
-  });
   document.getElementById("langSel")!.addEventListener("change", function (e: any) {
     setLang(e.target.value);
     applyLang();
@@ -846,11 +855,18 @@ export function applyLang(): void {
   (document.getElementById("ghGist") as HTMLInputElement).placeholder = t("ph_gist");
   document.getElementById("syncConnect")!.textContent = t("connect");
   document.getElementById("syncOff")!.textContent = t("disconnect");
-  document.getElementById("syncHint")!.textContent = t("hint");
   document.getElementById("csvBtn")!.textContent = t("csv");
   document.getElementById("bakBtn")!.textContent = t("backup");
   document.getElementById("resBtn")!.textContent = t("restore");
-  document.getElementById("nodataBtn")!.textContent = t("nodata");
+  document.getElementById("langLbl")!.textContent = t("lbl_lang");
+  document.getElementById("themeLbl")!.textContent = t("lbl_theme");
+  document.getElementById("syncSpoilerLbl")!.textContent = t("sync_spoiler");
+  document.getElementById("syncHelpBtn")!.setAttribute("aria-label", t("sync_help_aria"));
+  document.getElementById("helpWhat")!.textContent = t("help_what");
+  document.getElementById("helpGoogle")!.textContent = t("help_google");
+  document.getElementById("helpGh")!.textContent = t("help_gh");
+  document.getElementById("playniteHead")!.textContent = t("head_playnite");
+  document.getElementById("dataHead")!.textContent = t("head_data");
   refreshNoMergeBtn();
   var ss = document.getElementById("sortSel") as HTMLSelectElement;
   ss.innerHTML = ["default", "name", "cs", "rating", "rel", "time"].map(function (m) {
