@@ -1,7 +1,7 @@
 // @shots — screenshot pass for the critic loop. `npm run shots` writes shots/.
 import { mkdir } from "node:fs/promises";
 import { test, openApp, openCard, expect } from "./app";
-import { makeState, tinyState } from "./fixtures";
+import { makeState, tinyState, State } from "./fixtures";
 
 const DIR = "shots";
 
@@ -69,5 +69,39 @@ test.describe("@shots key screens", () => {
     // launcher CSS bars are the flagship element — capture them explicitly
     await page.locator(".rbar").last().scrollIntoViewIfNeeded();
     await page.screenshot({ path: shot(ti, "08b-results-launchers") });
+  });
+
+  test("results dynamics states", async ({ page }, ti) => {
+    // runs row + ▼ drop, growth from zero — the states a critic can't guess
+    const st: State = {
+      nextId: 6,
+      updatedAt: 1754700000000,
+      games: [
+        { id: 1, name: "Prev One", status: "done", years: [2024], rating: 4 },
+        { id: 2, name: "Prev Two", status: "done", years: [2024], rating: 3 },
+        { id: 3, name: "Prev Three", status: "done", years: [2024] },
+        { id: 4, name: "Curr Replayed", status: "done", years: [2025], counts: { 2025: 2 }, rating: 5, genres: "RPG", platform: "PC", source: "Steam" },
+        { id: 5, name: "Old Timer", status: "done", years: [2012], rating: 4 }
+      ] as any,
+      collapsed: {}
+    };
+    await openApp(page, ti, st);
+    await page.locator("#resultsBtn").click();
+    await expect(page.locator("#resultsWin")).toBeVisible();
+    // 2025: runs row (×2 replay) + red ▼ drop vs 2024
+    await page.screenshot({ path: shot(ti, "07c-results-drop") });
+    // 2012: growth from an empty 2011 (0 → 1 ▲)
+    await page.locator(".rchip", { hasText: "2012" }).click();
+    await page.screenshot({ path: shot(ti, "07d-results-growth") });
+    // tinyState 2024: equal years «=»
+    await page.locator("#resClose").click();
+  });
+
+  test("results equal-years state", async ({ page }, ti) => {
+    await openApp(page, ti, tinyState());
+    await page.locator("#resultsBtn").click();
+    await expect(page.locator("#resultsWin")).toBeVisible();
+    // default period 2024, prev 2023 both have exactly 1 beaten → «=»
+    await page.screenshot({ path: shot(ti, "07e-results-equal") });
   });
 });

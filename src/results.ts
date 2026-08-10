@@ -62,6 +62,67 @@ function row(label: string, value: string, cls?: string): string {
     + '</span><span class="rdots"></span><span class="rval">' + value + '</span></div>';
 }
 
+// distinct beaten games per real year (0 = «Давно» excluded)
+function beatenByYear(): Record<number, number> {
+  var map: Record<number, number> = {};
+  state.games.forEach(function (g) {
+    g.years.forEach(function (y) {
+      if (y > 0) map[y] = (map[y] || 0) + 1;
+    });
+  });
+  return map;
+}
+
+function barsGroup(title: string, items: Array<[string, number]>): string {
+  if (!items.length) return "";
+  var max = items[0][1];
+  return '<div class="rgroup"><div class="rhead">' + title + '</div>'
+    + items.map(function (kv) {
+      var w = Math.max(6, Math.round((kv[1] / max) * 100));
+      return '<div class="rbar"><span class="rlabel">' + esc(kv[0]) + '</span>'
+        + '<span class="rtrack"><span class="rfill" style="width:' + w + '%"></span></span>'
+        + '<span class="rval">' + kv[1] + '</span></div>';
+    }).join("") + '</div>';
+}
+
+// dynamics column chart: beaten per year, selected year in gold (CSS only)
+function yearsChart(selected: Period): string {
+  var byYear = beatenByYear();
+  var ys = Object.keys(byYear).map(Number).sort(function (a, b) { return a - b; });
+  if (ys.length < 2) return ""; // no dynamics to show
+  var max = 0;
+  ys.forEach(function (y) { if (byYear[y] > max) max = byYear[y]; });
+  // value sits right on top of its own column (no dead zone above short bars)
+  return '<div class="rgroup"><div class="rhead">' + t("res_by_year") + '</div>'
+    + '<div class="rchartwrap"><div class="rchart">'
+    + ys.map(function (y) {
+      var h = Math.max(4, Math.round((byYear[y] / max) * 80));
+      return '<div class="rcol' + (selected === y ? " sel" : "") + '" data-year="' + y + '">'
+        + '<span class="rcolv">' + byYear[y] + '</span>'
+        + '<span class="rcolbar" style="height:' + h + 'px"></span>'
+        + '<span class="rcoly">’' + String(y).slice(-2) + '</span>'
+        + '</div>';
+    }).join("")
+    + '</div></div></div>';
+}
+
+// scroll the chart to the highlighted year (or to the newest years) and
+// keep the edge fades in sync as a "there is more" affordance
+function tuneChart(): void {
+  var chart = document.querySelector("#resBody .rchart") as HTMLElement | null;
+  if (!chart) return;
+  var wrap = chart.parentElement as HTMLElement;
+  var update = function () {
+    wrap.classList.toggle("at-start", chart!.scrollLeft <= 2);
+    wrap.classList.toggle("at-end", chart!.scrollLeft >= chart!.scrollWidth - chart!.clientWidth - 2);
+  };
+  chart.addEventListener("scroll", update);
+  var sel = chart.querySelector(".rcol.sel") as HTMLElement | null;
+  if (sel) chart.scrollLeft = sel.offsetLeft - chart.clientWidth / 2 + sel.clientWidth / 2;
+  else chart.scrollLeft = chart.scrollWidth; // «всё время» — свежие годы справа
+  update();
+}
+
 function renderPeriod(p: Period): string {
   var games = state.games.filter(function (g) { return inPeriod(g, p); });
   if (!games.length) {
@@ -69,8 +130,6 @@ function renderPeriod(p: Period): string {
   }
   var runs = 0;
   games.forEach(function (g) { runs += runsIn(g, p); });
-  var hours = 0;
-  games.forEach(function (g) { hours += g.time || 0; });
   var rated = games.filter(function (g) { return !!g.rating; });
   var avg = rated.length
     ? rated.reduce(function (s, g) { return s + (g.rating || 0); }, 0) / rated.length
@@ -79,18 +138,28 @@ function renderPeriod(p: Period): string {
   var html = "";
   html += row(t("res_beaten"), String(games.length));
   if (runs > games.length) html += row(t("res_runs"), String(runs));
-  // `time` comes from Playnite as a LIFETIME total per game — for a single
-  // year it must not read as "hours played that year"
-  html += row(
-    p === "all" ? t("res_hours") : t("res_hours_total"),
-    hours ? fmtHours(hours) : t("res_no_data")
-  );
+  // hours are shown ONLY for «all time»: Playnite `time` is a lifetime
+  // total per game, a per-year sum would be a lie
+  if (p === "all") {
+    var hours = 0;
+    games.forEach(function (g) { hours += g.time || 0; });
+    html += row(t("res_hours"), hours ? fmtHours(hours) : t("res_no_data"));
+  }
   html += row(
     t("res_avg"),
     rated.length
       ? '<span class="rstars">' + starsFor(avg) + '</span> ' + avg.toFixed(1)
       : t("res_no_data")
   );
+  // dynamics vs the previous calendar year
+  if (typeof p === "number" && p > 0) {
+    var prev = beatenByYear()[p - 1] || 0;
+    var d = games.length - prev;
+    var dView = d > 0 ? '<span class="up">▲ +' + d + '</span>'
+      : d < 0 ? '<span class="down">▼ ' + d + '</span>'
+      : '<span class="same">=</span>';
+    html += row(t("res_vs_prev") + " (" + (p - 1) + ")", prev + " → " + games.length + " " + dView);
+  }
 
   // headline picks
   var goty: Game | null = null;
@@ -98,10 +167,6 @@ function renderPeriod(p: Period): string {
     if (!goty
       || (g.rating || 0) > (goty.rating || 0)
       || ((g.rating || 0) === (goty.rating || 0) && (g.time || 0) > (goty.time || 0))) goty = g;
-  });
-  var longest: Game | null = null;
-  games.forEach(function (g) {
-    if ((g.time || 0) > 0 && (!longest || (g.time || 0) > (longest.time || 0))) longest = g;
   });
   var serRuns: Record<string, number> = {};
   games.forEach(function (g) {
@@ -120,12 +185,19 @@ function renderPeriod(p: Period): string {
       "wide"
     );
   }
-  if (longest) {
-    picks += row(
-      t("res_longest"),
-      esc((longest as Game).name) + ' · <span class="rgold rnb">' + fmtHours((longest as Game).time || 0) + '</span>',
-      "wide"
-    );
+  if (p === "all") {
+    // longest game is measured in lifetime hours → all-time view only
+    var longest: Game | null = null;
+    games.forEach(function (g) {
+      if ((g.time || 0) > 0 && (!longest || (g.time || 0) > (longest.time || 0))) longest = g;
+    });
+    if (longest) {
+      picks += row(
+        t("res_longest"),
+        esc((longest as Game).name) + ' · <span class="rgold rnb">' + fmtHours((longest as Game).time || 0) + '</span>',
+        "wide"
+      );
+    }
   }
   if (topSer && topSer[1] > 0) {
     picks += row(
@@ -136,36 +208,18 @@ function renderPeriod(p: Period): string {
   }
   if (picks) html += '<div class="rgroup">' + picks + '</div>';
 
-  // top-3 genres / platforms
-  var genres = topCounts(games, function (g) {
-    return g.genres ? g.genres.split(",").map(function (s) { return s.trim(); }) : null;
-  }, 3);
-  var platforms = topCounts(games, function (g) {
-    return g.platform ? [g.platform] : null;
-  }, 3);
-  if (genres.length) {
-    html += '<div class="rgroup"><div class="rhead">' + t("res_top_genres") + '</div>'
-      + genres.map(function (kv) { return row(esc(kv[0]), String(kv[1])); }).join("") + '</div>';
-  }
-  if (platforms.length) {
-    html += '<div class="rgroup"><div class="rhead">' + t("res_top_platforms") + '</div>'
-      + platforms.map(function (kv) { return row(esc(kv[0]), String(kv[1])); }).join("") + '</div>';
-  }
+  html += yearsChart(p);
 
-  // launcher breakdown with CSS bars
-  var launchers = topCounts(games, function (g) {
+  // per-period breakdowns: what IS knowable for the period
+  html += barsGroup(t("res_by_genres"), topCounts(games, function (g) {
+    return g.genres ? g.genres.split(",").map(function (s) { return s.trim(); }) : null;
+  }, 5));
+  html += barsGroup(t("res_by_platforms"), topCounts(games, function (g) {
+    return g.platform ? [g.platform] : null;
+  }, 5));
+  html += barsGroup(t("res_launchers"), topCounts(games, function (g) {
     return g.source ? [g.source] : null;
-  }, 99);
-  if (launchers.length) {
-    var max = launchers[0][1];
-    html += '<div class="rgroup"><div class="rhead">' + t("res_launchers") + '</div>'
-      + launchers.map(function (kv) {
-        var w = Math.max(6, Math.round((kv[1] / max) * 100));
-        return '<div class="rbar"><span class="rlabel">' + esc(kv[0]) + '</span>'
-          + '<span class="rtrack"><span class="rfill" style="width:' + w + '%"></span></span>'
-          + '<span class="rval">' + kv[1] + '</span></div>';
-      }).join("") + '</div>';
-  }
+  }, 99));
   return html;
 }
 
@@ -185,6 +239,7 @@ export function renderResults(): void {
     }).join("");
   document.getElementById("resPeriods")!.innerHTML = chips;
   document.getElementById("resBody")!.innerHTML = renderPeriod(current);
+  tuneChart();
 }
 
 export function openResults(): void {
