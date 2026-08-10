@@ -169,13 +169,11 @@ test("favorite ⚑ toggle in header row keeps on/off states", async ({ page }, t
   await expect(flag).not.toHaveClass(/on/);
   await flag.click();
   await expect(page.locator(".card.open .favtoggle")).toHaveClass(/on/);
-  // closed card shows the static ⚑ mark
+  // closed card keeps the gold badge-sized flag
   await page.locator(".card.open .titleedit").blur();
   await page.locator(".tab").nth(6).click();
   await expect(page.locator(".card")).toHaveCount(2);
-  await expect(
-    page.locator(".card", { hasText: "Beta Blade" }).locator(".favmark")
-  ).toBeVisible();
+  await expect(page.locator(".card .favtoggle.on")).toHaveCount(2);
 });
 
 test("tap on the open card's title renames the game in place", async ({ page }, ti) => {

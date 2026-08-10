@@ -73,6 +73,8 @@ function cardHTML(g: Game, ctx: number | null): string {
   var actions = "";
   if (open) {
     if (ctx === null) {
+      // статусы и «+ Прошёл в…» — одной строкой, кнопки ужимаются
+      actions += '<div class="statusrow">';
       actions += STATUS_KEYS.filter(function (s) { return s !== g.status && s !== "done"; })
         .map(function (s) {
           return '<button class="btn" data-act="status" data-s="' + s + '">' + stLabel(s) + '</button>';
@@ -92,6 +94,7 @@ function cardHTML(g: Game, ctx: number | null): string {
           + '<input class="platinput oldcnt" data-role="precount" type="number" min="1" max="99" value="1" title="' + t("times").trim() + '">'
           + '</span>';
       }
+      actions += '</div>';
     } else {
       var yearOpts = '<option value="0"' + (+ctx === 0 ? " selected" : "") + '>' + t("long_ago") + '</option>';
       for (var y = cy + 1; y >= 2000; y--) {
@@ -127,7 +130,7 @@ function cardHTML(g: Game, ctx: number | null): string {
     };
     actions += '<div class="pngroup' + (pnOpen ? " pnopen" : "") + '">'
       + '<button type="button" class="pnhead" data-act="pntoggle"><span class="caret">▾</span>'
-      + t("head_playnite") + '</button>'
+      + t("pn_meta") + '</button>'
       + '<div class="pnfields"' + (pnOpen ? "" : " hidden") + '>'
       + pnField(t("platform"),
         '<span class="sugwrap"><input class="platinput" data-act="plat" value="'
@@ -224,17 +227,16 @@ function cardHTML(g: Game, ctx: number | null): string {
   var titleView = open
     ? '<input class="titleedit" data-act="rename" value="' + esc(g.name) + '" aria-label="' + t("name_ph") + '">'
     : '<span class="name">' + esc(g.name) + '</span>';
-  var favBtn = '<button class="favtoggle' + (open ? "" : " listonly") + (g.fav ? " on" : "")
+  // the ⚑ toggle lives on every card: big in the open card, badge-sized when collapsed
+  var favView = '<button class="favtoggle' + (g.fav ? " on" : "")
     + '" data-act="fav" aria-label="' + (g.fav ? t("fav_off") : t("fav_on"))
     + '" title="' + (g.fav ? t("fav_off") : t("fav_on")) + '">⚑</button>';
-  // collapsed card: interactive flag in list view, static mark elsewhere
-  var favView = open ? favBtn : favBtn + (g.fav ? '<span class="favmark" title="⚑">⚑</span>' : "");
   return '<div class="card win ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + (ctx === null ? "s" : ctx) + '">'
     + '<span class="cursor">▶</span>'
-    + '<div class="row">' + titleView + favView + badge + '</div>'
+    + '<div class="row">' + titleView + favView
+    + '<span class="side">' + badge + starsView + '</span></div>'
     + chipsView
     + metaView
-    + starsView
     + (open ? '<div class="actions">' + actions + '</div>' : "") + '</div>';
 }
 

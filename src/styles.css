@@ -277,6 +277,12 @@
 
   .card .row{display:flex;align-items:flex-start;gap:8px}
   .card .name{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;font-size:.98rem}
+  /* right column of the header row: status badge with rating/score under it */
+  .card .side{
+    display:flex;flex-direction:column;align-items:flex-end;gap:4px;
+    flex:0 0 auto;margin-left:auto;
+  }
+  .card .side .stars{margin-top:0;text-align:right}
   /* in-place rename: the open card's title is the edit field */
   .titleedit{
     flex:1 1 auto;min-width:0;background:none;border:none;
@@ -295,6 +301,13 @@
     text-shadow:0 1px 3px rgba(0,0,0,.6);
   }
   .favtoggle:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  /* collapsed card: badge-sized flag with an extended invisible tap zone */
+  .card:not(.open) .favtoggle{
+    min-width:0;min-height:0;margin-top:0;align-self:flex-start;
+    padding:2px 10px;font-size:.72rem;border-width:1px;border-radius:4px;
+    position:relative;
+  }
+  .card:not(.open) .favtoggle::after{content:"";position:absolute;inset:-10px}
   .card .row .badge{margin-left:auto;flex-shrink:0}
   .chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
   .favmark{flex:0 0 auto;color:var(--gold);font-size:.95rem;
@@ -388,8 +401,13 @@
   .pnfield .sugwrap{flex:1;display:flex;min-width:0}
   .pnfield .sugwrap input{width:100%}
   .pnfield>input{flex:1;min-width:0;width:auto}
-  /* collapsed cards: flag button hidden outside desktop list view */
-  .favtoggle.listonly{display:none}
+  /* status buttons and «+ Beaten in…» share one shrinking row */
+  .statusrow{display:flex;gap:8px;width:100%;min-width:0;align-items:stretch}
+  .statusrow .btn{flex:1 1 auto;min-width:0;padding:8px 4px;white-space:nowrap;
+    overflow:hidden;text-overflow:ellipsis}
+  .statusrow .mpair{flex:1 1 auto;min-width:0;display:inline-flex}
+  .statusrow .mpair select{flex:1 1 auto;min-width:0;width:auto}
+  .statusrow .oldcnt{width:52px}
   .mpair{display:inline-flex;gap:4px;align-items:stretch}
   .xmark{align-self:center;color:var(--gold);font-size:1rem;padding:0 2px}
   .mpair .nomerge{padding:8px;color:var(--text-dim)}
@@ -577,11 +595,6 @@
     /* everything stays LEFT under the title; only ⚑ and badge sit right */
     :root[data-view="list"] .card .chips{display:inline-flex;vertical-align:middle;margin-right:12px}
     :root[data-view="list"] .card .meta{display:inline-block;vertical-align:middle;margin:8px 12px 0 0}
-    :root[data-view="list"] .card .stars{display:inline-block;vertical-align:middle;margin-top:8px}
-    /* collapsed card shows the interactive flag in list view */
-    :root[data-view="list"] .card:not(.open) .favtoggle.listonly{
-      display:inline-grid;place-content:center;margin-top:0}
-    :root[data-view="list"] .card:not(.open) .favmark{display:none}
     /* Playnite spoiler fields in two columns on wide screens */
     .pnfields{grid-template-columns:1fr 1fr;column-gap:16px}
   }
