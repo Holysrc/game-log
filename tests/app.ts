@@ -33,6 +33,7 @@ export const L = {
     resByGenres: "По жанрам",
     resLongest: "Самая длинная",
     resSeriesAll: "Главная серия",
+    bakRolled: "Откачено на ",
     diceTitle: "Кубик судьбы",
     dicePool: "В пуле: ",
     diceEmpty: "Пул пуст — ослабь фильтры"
@@ -65,6 +66,7 @@ export const L = {
     resByGenres: "By genre",
     resLongest: "Longest game",
     resSeriesAll: "Top series",
+    bakRolled: "Rolled back to ",
     diceTitle: "Dice of fate",
     dicePool: "In the pool: ",
     diceEmpty: "Pool is empty — loosen the filters"
