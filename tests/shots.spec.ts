@@ -102,6 +102,14 @@ test.describe("@shots key screens", () => {
     await page.locator("#resClose").click();
   });
 
+  test("desktop list view", async ({ page }, ti) => {
+    test.skip(ti.project.metadata.form !== "desktop", "desktop-only");
+    await openApp(page, ti, makeState(300));
+    await page.locator(`#viewToggle .btn[data-view="list"]`).click();
+    await expect(page.locator("html")).toHaveAttribute("data-view", "list");
+    await page.screenshot({ path: shot(ti, "11-list-view") });
+  });
+
   test("Sega Genesis theme", async ({ page }, ti) => {
     await openApp(page, ti, makeState(300));
     await page.locator("#gearBtn").click();

@@ -56,6 +56,40 @@ test("desktop grid rows have equal card heights", async ({ page }, ti) => {
   expect(Math.abs(a!.height - b!.height), "side-by-side cards must align").toBeLessThanOrEqual(1);
 });
 
+test.describe("desktop list/grid view toggle", () => {
+  test.beforeEach(({}, ti) => {
+    test.skip(meta(ti).form !== "desktop", "desktop-only control");
+  });
+
+  test("defaults to grid, switches to full-width list, persists", async ({ page }, ti) => {
+    await openApp(page, ti, tinyState());
+    await expect(page.locator("#viewToggle")).toBeVisible();
+    await expect(page.locator(`#viewToggle .btn[data-view="grid"]`)).toHaveClass(/active/);
+    let secDisplay = await page.locator(".sec").first().evaluate((el) => getComputedStyle(el).display);
+    expect(secDisplay).toBe("grid");
+
+    await page.locator(`#viewToggle .btn[data-view="list"]`).click();
+    await expect(page.locator("html")).toHaveAttribute("data-view", "list");
+    secDisplay = await page.locator(".sec").first().evaluate((el) => getComputedStyle(el).display);
+    expect(secDisplay).toBe("block");
+    // one full-width card per row
+    const w = (await page.locator(".sec .card").first().boundingBox())!.width;
+    expect(w).toBeGreaterThan(700);
+    expect(await page.evaluate(() => localStorage.getItem("gamelog-view"))).toBe("list");
+
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-view", "list");
+    await page.locator(`#viewToggle .btn[data-view="grid"]`).click();
+    expect(await page.evaluate(() => document.documentElement.getAttribute("data-view"))).toBeNull();
+  });
+});
+
+test("mobile has no view toggle", async ({ page }, ti) => {
+  test.skip(meta(ti).form !== "mobile", "mobile-only check");
+  await openApp(page, ti, tinyState());
+  await expect(page.locator("#viewToggle")).toBeHidden();
+});
+
 test("theme switching applies Sega Genesis palette and persists", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
   // default: FF palette, no data-theme

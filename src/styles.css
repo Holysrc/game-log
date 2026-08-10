@@ -206,10 +206,11 @@
   .btn.gold{border-color:var(--gold);color:var(--gold)}
   .sortrow{margin:-2px 0 8px}
   .sortrow select{
-    width:100%;background:rgba(var(--ink1),.55);border:1.5px solid var(--border-dim);border-radius:8px;
+    flex:1;min-width:0;background:rgba(var(--ink1),.55);border:1.5px solid var(--border-dim);border-radius:8px;
     color:var(--text-dim);padding:8px 12px;font-size:.82rem;min-height:44px;
   }
   .sortrow select:focus{outline:none;border-color:var(--gold)}
+  .viewtoggle{display:none} /* desktop-only control */
 
   /* ---- list ---- */
   .sec{margin-top:8px}
@@ -517,4 +518,14 @@
     /* stretch: both cards of a grid row share the tallest height — even rows */
     .sec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px}
     .sec>.yearhead{grid-column:1/-1}
+    /* view toggle: grid ▦ (default) or full-width list ☰ */
+    .viewtoggle{display:flex;gap:4px;flex:0 0 auto}
+    .viewtoggle .btn{min-height:0;padding:8px 12px;font-size:.9rem;color:var(--text-dim)}
+    .viewtoggle .btn.active{border-color:var(--gold);color:var(--gold);
+      background:rgba(var(--gold-rgb),.1)}
+    :root[data-view="list"] .sec{display:block}
+    /* wide list card: chips, meta and stars share one tidy line */
+    :root[data-view="list"] .card .chips{display:inline-flex;vertical-align:middle;margin-right:12px}
+    :root[data-view="list"] .card .meta{display:inline-block;vertical-align:middle;margin:8px 12px 0 0}
+    :root[data-view="list"] .card .stars{display:inline-block;vertical-align:middle;margin-top:8px}
   }

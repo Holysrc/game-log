@@ -13,6 +13,20 @@ var SORTKEY = "gamelog-sort";
 var sortMode = "default";
 try { sortMode = localStorage.getItem(SORTKEY) || "default"; } catch (e) {}
 
+// desktop list-view preference: "grid" (default) | "list", device-local
+var VIEWKEY = "gamelog-view";
+var viewMode = "grid";
+try { viewMode = localStorage.getItem(VIEWKEY) || "grid"; } catch (e) {}
+if (viewMode !== "grid" && viewMode !== "list") viewMode = "grid";
+
+function applyView(): void {
+  if (viewMode === "list") document.documentElement.setAttribute("data-view", "list");
+  else document.documentElement.removeAttribute("data-view");
+  document.querySelectorAll("#viewToggle .btn").forEach(function (b: any) {
+    b.classList.toggle("active", b.dataset.view === viewMode);
+  });
+}
+
 export function setOpenId(v: string | null): void { openId = v; }
 
 function sortItems(arr: Game[]): Game[] {
@@ -762,6 +776,14 @@ export function wireUI(): void {
     try { localStorage.setItem(SORTKEY, sortMode); } catch (err) {}
     render();
   });
+  document.getElementById("viewToggle")!.addEventListener("click", function (e: any) {
+    var b = e.target.closest(".btn");
+    if (!b) return;
+    viewMode = b.dataset.view === "list" ? "list" : "grid";
+    try { localStorage.setItem(VIEWKEY, viewMode); } catch (err) {}
+    applyView();
+  });
+  applyView();
   document.getElementById("resetNoMergeBtn")!.addEventListener("click", function () {
     state.noMerge = [];
     save();
@@ -820,6 +842,9 @@ export function applyLang(): void {
   document.getElementById("helpGh")!.textContent = t("help_gh");
   document.getElementById("playniteHead")!.textContent = t("head_playnite");
   document.getElementById("dataHead")!.textContent = t("head_data");
+  document.querySelectorAll("#viewToggle .btn").forEach(function (b: any) {
+    b.setAttribute("aria-label", t(b.dataset.view === "list" ? "view_list" : "view_grid"));
+  });
   refreshNoMergeBtn();
   var ss = document.getElementById("sortSel") as HTMLSelectElement;
   ss.innerHTML = ["default", "name", "cs", "rating", "rel", "time"].map(function (m) {

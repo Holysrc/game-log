@@ -90,7 +90,13 @@
   <button class="btn gold" id="addBtn">+ Добавить</button>
 </div>
 
-<div class="bar sortrow"><select id="sortSel"></select></div>
+<div class="bar sortrow">
+  <select id="sortSel"></select>
+  <div class="viewtoggle" id="viewToggle">
+    <button class="btn" data-view="grid" aria-label="Сетка">▦</button>
+    <button class="btn" data-view="list" aria-label="Список">☰</button>
+  </div>
+</div>
 
 <main id="list"></main>
 
