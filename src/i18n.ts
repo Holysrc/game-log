@@ -52,6 +52,7 @@ ru:{
   res_empty:"За этот период прохождений нет",res_no_data:"—",
   rating_aria:"Оценка {r} из 5",settings_aria:"Настройки синхронизации",
   bad_format:"не тот формат",file_desc:"Данные журнала",autosave:"автосохранение",not_dupes:"Не дубли",
+  theme_aria:"Тема оформления",
   gh_bad_token:" — токен не подошёл"
 },
 en:{
@@ -104,6 +105,7 @@ en:{
   res_empty:"No completions in this period",res_no_data:"—",
   rating_aria:"Rating {r} of 5",settings_aria:"Sync settings",
   bad_format:"wrong format",file_desc:"Game log data",autosave:"autosave",not_dupes:"Not duplicates",
+  theme_aria:"Theme",
   gh_bad_token:" — token was rejected"
 }};
 

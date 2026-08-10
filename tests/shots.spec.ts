@@ -97,6 +97,17 @@ test.describe("@shots key screens", () => {
     await page.locator("#resClose").click();
   });
 
+  test("Sega Genesis theme", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(300));
+    await page.locator("#gearBtn").click();
+    await page.locator("#themeSel").selectOption("genesis");
+    await page.locator("#gearBtn").click();
+    await page.screenshot({ path: shot(ti, "10-theme-genesis") });
+    await page.locator("#resultsBtn").click();
+    await expect(page.locator("#resultsWin")).toBeVisible();
+    await page.screenshot({ path: shot(ti, "10b-theme-genesis-results") });
+  });
+
   test("results equal-years state", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
     await page.locator("#resultsBtn").click();

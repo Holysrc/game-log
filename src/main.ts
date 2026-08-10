@@ -8,7 +8,9 @@ import { wireImporter } from "./importer";
 import { wireSyncPanel, scheduleFileWrite, schedulePush, syncOn, pullRemote } from "./sync";
 import { wireResults, applyResultsLang } from "./results";
 import { wireDice, openDice, applyDiceLang } from "./dice";
+import { applyTheme, wireTheme, applyThemeLang } from "./theme";
 
+applyTheme(); // before first paint of any window
 initData();
 
 // save() side effects: local-file autosave + debounced remote push
@@ -22,9 +24,11 @@ wireImporter();
 wireSyncPanel();
 wireResults();
 wireDice();
+wireTheme();
 setDiceHandler(openDice); // 🎲 tap opens the smart-dice filter window
 langHooks.push(applyResultsLang);
 langHooks.push(applyDiceLang);
+langHooks.push(applyThemeLang);
 
 var t0 = performance.now();
 applyLang();
