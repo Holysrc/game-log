@@ -7,7 +7,7 @@ export { expect };
 export const L = {
   ru: {
     title: "Журнал игр",
-    tabs: ["Все", "Играю", "Беклог", "Пройдено", "Брошено", "Отложено", "Каталог", "⚑ Избранное"],
+    tabs: ["⌂", "Играю", "Беклог", "Пройдено", "Брошено", "Отложено", "Каталог", "⚑ Избранное"],
     add: "+ Добавить",
     doneLbl: "Пройдено",
     playingLbl: "Играю",
@@ -41,7 +41,7 @@ export const L = {
   },
   en: {
     title: "Game Log",
-    tabs: ["All", "Playing", "Backlog", "Beaten", "Dropped", "On hold", "Catalog", "⚑ Favorites"],
+    tabs: ["⌂", "Playing", "Backlog", "Beaten", "Dropped", "On hold", "Catalog", "⚑ Favorites"],
     add: "+ Add",
     doneLbl: "Beaten",
     playingLbl: "Playing",

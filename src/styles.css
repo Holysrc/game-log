@@ -171,6 +171,7 @@
     background:rgba(var(--ink2),.55);color:var(--text-dim);
     padding:8px 12px;font-size:.83rem;cursor:pointer;letter-spacing:.02em;min-height:44px;
   }
+  .tab[data-f="all"]{font-size:1.1rem;line-height:1;padding:8px 14px}
   .tab.active{border-color:var(--gold);color:var(--gold);background:rgba(var(--gold-rgb),.1)}
   .tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
