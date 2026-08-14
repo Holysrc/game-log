@@ -13,10 +13,11 @@ interface DiceFilters {
   cs: number;
   lib: boolean;
   fresh: boolean;
+  hold: boolean; // include «On hold» games in the pool
   series: string;
 }
 
-var filters: DiceFilters = { genre: "", cs: 0, lib: false, fresh: false, series: "" };
+var filters: DiceFilters = { genre: "", cs: 0, lib: false, fresh: false, hold: false, series: "" };
 try {
   var raw = localStorage.getItem(DKEY);
   if (raw) filters = Object.assign(filters, JSON.parse(raw));
@@ -30,8 +31,15 @@ function backlog(): Game[] {
   return state.games.filter(function (g) { return g.status === "backlog"; });
 }
 
+// расширенный пул: беклог + (по галочке) отложенные
+function basePool(): Game[] {
+  return state.games.filter(function (g) {
+    return g.status === "backlog" || (filters.hold && g.status === "onhold");
+  });
+}
+
 export function dicePool(): Game[] {
-  return backlog().filter(function (g) {
+  return basePool().filter(function (g) {
     if (filters.genre) {
       var gs = (g.genres || "").split(",").map(function (s) { return s.trim().toLowerCase(); });
       if (gs.indexOf(filters.genre.toLowerCase()) === -1) return false;
@@ -53,7 +61,7 @@ function options(values: string[], selected: string, anyLabel: string): string {
 
 function fillForm(): void {
   var genres: Record<string, string> = {}, series: Record<string, 1> = {};
-  backlog().forEach(function (g) {
+  basePool().forEach(function (g) {
     (g.genres || "").split(",").forEach(function (s) {
       var v = s.trim();
       if (v) genres[v.toLowerCase()] = v; // dedupe case-insensitively, keep first spelling
@@ -73,6 +81,7 @@ function fillForm(): void {
     }).join("");
   (document.getElementById("dLib") as HTMLInputElement).checked = filters.lib;
   (document.getElementById("dFresh") as HTMLInputElement).checked = filters.fresh;
+  (document.getElementById("dHold") as HTMLInputElement).checked = filters.hold;
   refreshPool();
 }
 
@@ -89,8 +98,13 @@ function readForm(): void {
   filters.cs = +(document.getElementById("dCs") as HTMLSelectElement).value || 0;
   filters.lib = (document.getElementById("dLib") as HTMLInputElement).checked;
   filters.fresh = (document.getElementById("dFresh") as HTMLInputElement).checked;
+  var hold = (document.getElementById("dHold") as HTMLInputElement).checked;
+  var holdChanged = hold !== filters.hold;
+  filters.hold = hold;
   saveFilters();
-  refreshPool();
+  // пул расширился/сузился — списки жанров и серий надо пересобрать
+  if (holdChanged) fillForm();
+  else refreshPool();
 }
 
 export function openDice(): void {
@@ -108,6 +122,7 @@ export function applyDiceLang(): void {
   document.getElementById("dCsLbl")!.textContent = t("dice_cs");
   document.getElementById("dLibLbl")!.textContent = t("dice_lib");
   document.getElementById("dFreshLbl")!.textContent = t("dice_fresh");
+  document.getElementById("dHoldLbl")!.textContent = t("dice_hold");
   document.getElementById("dSeriesLbl")!.textContent = t("dice_series");
   document.getElementById("diceRoll")!.textContent = t("dice_roll");
   document.getElementById("diceQuick")!.textContent = t("dice_quick");
@@ -121,11 +136,11 @@ export function wireDice(): void {
   ["dGenre", "dSeries", "dCs"].forEach(function (id) {
     document.getElementById(id)!.addEventListener("change", readForm);
   });
-  ["dLib", "dFresh"].forEach(function (id) {
+  ["dLib", "dFresh", "dHold"].forEach(function (id) {
     document.getElementById(id)!.addEventListener("change", readForm);
   });
   document.getElementById("diceReset")!.addEventListener("click", function () {
-    filters = { genre: "", cs: 0, lib: false, fresh: false, series: "" };
+    filters = { genre: "", cs: 0, lib: false, fresh: false, hold: false, series: "" };
     saveFilters();
     fillForm();
   });

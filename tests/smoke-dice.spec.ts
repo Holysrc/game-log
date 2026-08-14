@@ -75,6 +75,27 @@ test("filters persist on this device across reloads", async ({ page }, ti) => {
   await expect(page.locator("#dLib")).toBeChecked();
 });
 
+test("«include on-hold» widens the pool and persists", async ({ page }, ti) => {
+  const { tr } = meta(ti);
+  const st = tinyState();
+  st.games.find((g) => g.name === "Gamma Grove")!.status = "onhold" as any;
+  await openApp(page, ti, st);
+  await openDiceWin(page);
+  // без галочки отложенная Gamma Grove в пул не входит
+  await expect(page.locator("#dPool")).toContainText(`${tr.dicePool}4`);
+  await page.locator("#dHold").check();
+  await expect(page.locator("#dPool")).toContainText(`${tr.dicePool}5`);
+  // выбор запоминается на устройстве
+  await page.reload();
+  await openDiceWin(page);
+  await expect(page.locator("#dHold")).toBeChecked();
+  await expect(page.locator("#dPool")).toContainText(`${tr.dicePool}5`);
+  // сброс фильтров снимает и её
+  await page.locator("#diceReset").click();
+  await expect(page.locator("#dHold")).not.toBeChecked();
+  await expect(page.locator("#dPool")).toContainText(`${tr.dicePool}4`);
+});
+
 test("quick roll ignores filters", async ({ page }, ti) => {
   const { tr } = meta(ti);
   await openApp(page, ti, tinyState());
