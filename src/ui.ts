@@ -24,6 +24,14 @@ function sortItems(arr: Game[]): Game[] {
 }
 
 /* ================= render ================= */
+// waving swallowtail flag, fills with currentColor (theme-aware)
+export var FLAG_SVG = '<svg class="flagicon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="currentColor">'
+  + '<circle cx="4.1" cy="3.6" r="1.9"/>'
+  + '<rect x="3.2" y="4.6" width="1.8" height="17" rx=".9"/>'
+  + '<path d="M6.4 4.9c2.9-1.7 5.3 1.4 8.1.1 2.5-1.1 4.4-1 7.1.4l-3 3.3 2.5 3.7c-2.8.9-4.8.7-7.2-.6-2.4-1.3-4.7 1.3-7.5.5z"/>'
+  + '</svg>';
+
+
 function counts() {
   var c: any = { playing: 0, backlog: 0, done: 0, dropped: 0, onhold: 0 };
   state.games.forEach(function (g) { c[g.status]++; });
@@ -59,7 +67,7 @@ function cardHTML(g: Game, ctx: number | null): string {
   if (open) {
     actions += '<input class="platinput namefield" data-act="rename" placeholder="' + t("name_ph") + '" '
       + 'value="' + esc(g.name) + '">';
-    actions += '<button class="btn' + (g.fav ? " gold" : "") + '" data-act="fav">' + (g.fav ? t("fav_off") : t("fav_on")) + '</button>';
+    actions += '<button class="btn favbtn' + (g.fav ? " gold" : "") + '" data-act="fav">' + FLAG_SVG + (g.fav ? t("fav_off") : t("fav_on")) + '</button>';
     if (ctx === null) {
       actions += STATUS_KEYS.filter(function (s) { return s !== g.status && s !== "done"; })
         .map(function (s) {
@@ -198,7 +206,7 @@ function cardHTML(g: Game, ctx: number | null): string {
   return '<div class="card win ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + (ctx === null ? "s" : ctx) + '">'
     + '<span class="cursor">▶</span>'
     + '<div class="row"><span class="name">' + esc(g.name) + '</span>'
-    + (g.fav ? '<span class="favmark" title="⚑">⚑</span>' : "")
+    + (g.fav ? '<span class="favmark" title="' + t("tab_fav") + '">' + FLAG_SVG + '</span>' : "")
     + badge + '</div>'
     + chipsView
     + metaView
@@ -846,7 +854,8 @@ export function applyLang(): void {
     var f = tb.dataset.f;
     if (!f) return; // nodata-чип живёт по своим правилам в render()
     if (f === "all") { tb.setAttribute("aria-label", t("tab_all_aria")); return; } // внутри — SVG-домик
-    tb.textContent = f === "catalog" ? t("tab_catalog") : (f === "fav" ? t("tab_fav") : stLabel(f));
+    if (f === "fav") { tb.innerHTML = FLAG_SVG + " " + t("tab_fav"); return; }
+    tb.textContent = f === "catalog" ? t("tab_catalog") : stLabel(f);
   });
   (document.getElementById("search") as HTMLInputElement).placeholder = t("search_ph");
   document.getElementById("addBtn")!.textContent = t("add_btn");

@@ -173,6 +173,9 @@
   }
   .tab[data-f="all"]{display:inline-flex;align-items:center;justify-content:center;padding:8px 14px}
   .tab[data-f="all"] .homeicon{display:block}
+  .flagicon{vertical-align:-2px;margin-right:4px}
+  .favmark .flagicon{margin-right:0;vertical-align:-1px}
+  .favbtn .flagicon{margin-right:6px}
   .tab.active{border-color:var(--gold);color:var(--gold);background:rgba(var(--gold-rgb),.1)}
   .tab:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
