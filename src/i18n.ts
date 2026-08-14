@@ -51,6 +51,9 @@ ru:{
   res_series:"Серия года",res_series_all:"Главная серия",
   res_empty:"За этот период прохождений нет",res_no_data:"—",
   rating_aria:"Оценка {r} из 5",settings_aria:"Настройки синхронизации",
+  ref_similar:"Похоже на «{v}» — использовать это значение?",
+  ref_new_plat:"Создать новую платформу «{v}»?",
+  ref_new_src:"Создать новый лончер «{v}»?",
   bad_format:"не тот формат",file_desc:"Данные журнала",autosave:"автосохранение",not_dupes:"Не дубли",
   theme_aria:"Тема оформления",
   gh_bad_token:" — токен не подошёл"
@@ -104,6 +107,9 @@ en:{
   res_series:"Series of the year",res_series_all:"Top series",
   res_empty:"No completions in this period",res_no_data:"—",
   rating_aria:"Rating {r} of 5",settings_aria:"Sync settings",
+  ref_similar:"Looks like “{v}” — use it?",
+  ref_new_plat:"Create new platform “{v}”?",
+  ref_new_src:"Create new launcher “{v}”?",
   bad_format:"wrong format",file_desc:"Game log data",autosave:"autosave",not_dupes:"Not duplicates",
   theme_aria:"Theme",
   gh_bad_token:" — token was rejected"

@@ -400,6 +400,51 @@ function sugValues(kind: string): string[] {
   return Object.keys(set);
 }
 
+/* ---- справочник платформ/лончеров: канонизация свободного ввода ----
+   Список значений не хранится отдельно — он и есть sugValues(): уникальные
+   значения из самих игр плюс стартовый набор. */
+function normSpace(s: string): string {
+  return s.replace(/\s+/g, " ").trim();
+}
+
+function levenshtein(a: string, b: string): number {
+  var m = a.length, n = b.length;
+  if (Math.abs(m - n) > 2) return 99; // дальше 2 нас не интересует
+  var prev: number[] = [], cur: number[] = [];
+  for (var j = 0; j <= n; j++) prev[j] = j;
+  for (var i = 1; i <= m; i++) {
+    cur = [i];
+    for (var k = 1; k <= n; k++) {
+      cur[k] = Math.min(prev[k] + 1, cur[k - 1] + 1, prev[k - 1] + (a[i - 1] === b[k - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+// нормализовать ввод и свести к каноническому написанию из справочника;
+// новое значение заводится только после подтверждения, отказ => prev
+function resolveRef(kind: "plat" | "src", raw: string, prev: string | null): string | null {
+  var val = normSpace(raw);
+  if (!val) return null;
+  var values = sugValues(kind);
+  var low = val.toLowerCase();
+  for (var i = 0; i < values.length; i++) {
+    if (values[i].toLowerCase() === low) return values[i]; // опечатка регистра — канон побеждает
+  }
+  var best: string | null = null, bestD = 3;
+  values.forEach(function (v) {
+    var d = levenshtein(low, v.toLowerCase());
+    if (d < bestD) { bestD = d; best = v; }
+  });
+  var limit = val.length >= 4 ? 2 : 1; // короткие строки — только 1 правка
+  if (best && bestD <= limit) {
+    if (confirm(t("ref_similar").replace("{v}", best))) return best;
+  }
+  if (confirm(t(kind === "plat" ? "ref_new_plat" : "ref_new_src").replace("{v}", val))) return val;
+  return prev; // отказ от создания — откат к прежнему значению
+}
+
 function fillSug(input: HTMLInputElement): void {
   var kind = input.dataset.act;
   if (kind !== "plat" && kind !== "src" && kind !== "series") return;
@@ -735,11 +780,11 @@ export function wireUI(): void {
         toast("«" + g.name + "» " + t("added_to") + yLabel(v) + (pcv > 1 ? " ×" + pcv : ""));
       }
     }
-    else if (act === "plat") { g.platform = e.target.value.trim() || null; save(); render(); }
+    else if (act === "plat") { g.platform = resolveRef("plat", e.target.value, g.platform || null); save(); render(); }
     else if (act === "rel") { var rv = parseInt(e.target.value, 10); g.rel = (rv >= 1970 && rv <= 2030) ? rv : null; save(); render(); }
     else if (act === "genres") { g.genres = e.target.value.trim() || null; save(); render(); }
     else if (act === "series") { g.series = e.target.value.trim() || null; save(); render(); }
-    else { g.source = e.target.value.trim() || null; save(); render(); }
+    else { g.source = resolveRef("src", e.target.value, g.source || null); save(); render(); }
   });
 
   document.getElementById("sortSel")!.addEventListener("change", function (e: any) {
