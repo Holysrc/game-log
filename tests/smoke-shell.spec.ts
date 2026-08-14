@@ -102,7 +102,7 @@ test.describe("mobile: no horizontal overflow anywhere", () => {
   test("settings panel open with sync spoiler and help", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
     await page.locator("#gearBtn").click();
-    await expect(page.locator("#syncPanel")).toBeVisible();
+    await expect(page.locator("#settingsWin")).toBeVisible();
     await page.locator("#syncSpoiler").click();
     await page.locator("#syncHelpBtn").click();
     await expect(page.locator("#syncHelp")).toBeVisible();

@@ -155,16 +155,23 @@ export function wireSyncPanel(): void {
     var help = document.getElementById("syncHelp") as any;
     help.hidden = !help.hidden;
   });
+  // настройки — полноэкранное окно, как «Итоги»
+  var closeSettings = function () {
+    (document.getElementById("settingsWin") as any).hidden = true;
+    document.body.classList.remove("noscroll");
+  };
   document.getElementById("gearBtn")!.addEventListener("click", function () {
-    var p = document.getElementById("syncPanel") as any;
-    p.hidden = !p.hidden;
+    (document.getElementById("settingsWin") as any).hidden = false;
+    document.body.classList.add("noscroll");
     refreshNoMergeBtn();
     refreshBackupUI();
-    if (!p.hidden) {
-      (document.getElementById("gsUrl") as HTMLInputElement).value = syncCfg.gs || "";
-      (document.getElementById("ghToken") as HTMLInputElement).value = syncCfg.token || "";
-      (document.getElementById("ghGist") as HTMLInputElement).value = syncCfg.gist || "";
-    }
+    (document.getElementById("gsUrl") as HTMLInputElement).value = syncCfg.gs || "";
+    (document.getElementById("ghToken") as HTMLInputElement).value = syncCfg.token || "";
+    (document.getElementById("ghGist") as HTMLInputElement).value = syncCfg.gist || "";
+  });
+  document.getElementById("setClose")!.addEventListener("click", closeSettings);
+  document.addEventListener("keydown", function (e: any) {
+    if (e.key === "Escape" && !(document.getElementById("settingsWin") as any).hidden) closeSettings();
   });
   document.getElementById("syncConnect")!.addEventListener("click", function () {
     var gs = (document.getElementById("gsUrl") as HTMLInputElement).value.trim();
@@ -178,7 +185,7 @@ export function wireSyncPanel(): void {
       syncCfg = { gs: gs, token: "", gist: "" };
       saveSyncCfg();
       pullRemote();
-      (document.getElementById("syncPanel") as any).hidden = true;
+      closeSettings();
       toast(t("connected_drive"));
       return;
     }
@@ -187,7 +194,7 @@ export function wireSyncPanel(): void {
     if (g) {
       saveSyncCfg();
       pullRemote();
-      (document.getElementById("syncPanel") as any).hidden = true;
+      closeSettings();
       toast(t("connected"));
     } else {
       gh("POST", "/gists", {

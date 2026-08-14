@@ -34,7 +34,7 @@ test.describe("@shots key screens", () => {
   test("settings panel", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
     await page.locator("#gearBtn").click();
-    await expect(page.locator("#syncPanel")).toBeVisible();
+    await expect(page.locator("#settingsWin")).toBeVisible();
     await page.screenshot({ path: shot(ti, "04-settings") });
     // sync spoiler expanded with the ⓘ help open
     await page.locator("#syncSpoiler").click();

@@ -92,8 +92,8 @@
     min-width:44px;min-height:44px;display:grid;place-content:center;
   }
   .gear:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px}
-  .sync{margin-top:12px;display:grid;gap:8px;padding-top:12px;border-top:1px solid rgba(201,211,238,.25)}
-  .sync[hidden]{display:none}
+  .sync{display:grid;gap:8px}
+  .setbody{margin-top:12px}
   .sync>*{min-width:0}
   .sync .row2{display:flex;gap:8px;flex-wrap:wrap}
   .sync .row2 .btn{flex:1 1 auto;min-width:0}

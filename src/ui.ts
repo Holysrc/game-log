@@ -858,6 +858,8 @@ export function applyLang(): void {
   document.getElementById("csvBtn")!.textContent = t("csv");
   document.getElementById("bakBtn")!.textContent = t("backup");
   document.getElementById("resBtn")!.textContent = t("restore");
+  document.getElementById("setTitle")!.textContent = t("set_title");
+  document.getElementById("setClose")!.setAttribute("aria-label", t("res_close"));
   document.getElementById("langLbl")!.textContent = t("lbl_lang");
   document.getElementById("themeLbl")!.textContent = t("lbl_theme");
   document.getElementById("syncSpoilerLbl")!.textContent = t("sync_spoiler");

@@ -21,54 +21,6 @@
     <div class="stat done"><b id="stDone">0</b><span>пройдено</span></div>
   </div>
   <div class="fstatus" id="fstatus" hidden></div>
-  <div class="sync" id="syncPanel" hidden>
-    <label class="setrow"><span class="setlabel" id="langLbl">Язык</span>
-      <select id="langSel" aria-label="Language">
-        <option value="ru">Русский</option>
-        <option value="en">English</option>
-      </select></label>
-    <label class="setrow"><span class="setlabel" id="themeLbl">Тема</span>
-      <select id="themeSel" aria-label="Тема оформления">
-        <option value="">Final Fantasy</option>
-        <option value="genesis">Sega Genesis</option>
-      </select></label>
-
-    <div class="sprow">
-      <button class="spoiler col" id="syncSpoiler" aria-expanded="false">
-        <span class="caret">▾</span><span id="syncSpoilerLbl">Синхронизация</span>
-      </button>
-      <button class="infobtn" id="syncHelpBtn" aria-label="Что такое синхронизация">ⓘ</button>
-    </div>
-    <div class="synchelp" id="syncHelp" hidden>
-      <p id="helpWhat"></p>
-      <p id="helpGoogle"></p>
-      <p id="helpGh"></p>
-    </div>
-    <div class="syncbody" id="syncBody" hidden>
-      <input id="gsUrl" placeholder="Google Apps Script URL (…/exec)" autocomplete="off">
-      <div class="hint" style="text-align:center" id="orGist">— или через GitHub Gist —</div>
-      <input id="ghToken" type="password" placeholder="GitHub token" autocomplete="off">
-      <input id="ghGist" placeholder="Gist ID" autocomplete="off">
-      <div class="row2">
-        <button class="btn gold" id="syncConnect">Подключить</button>
-        <button class="btn" id="syncOff">Отключить</button>
-      </div>
-    </div>
-
-    <div class="sethead" id="playniteHead">Playnite</div>
-    <button class="btn" id="csvBtn">Импорт CSV</button>
-
-    <div class="sethead" id="dataHead">Данные</div>
-    <div class="row2">
-      <button class="btn" id="bakBtn">Бэкап</button>
-      <button class="btn" id="resBtn">Восстановить</button>
-    </div>
-    <div class="row2 bakrow">
-      <select id="bakSel" aria-label="Автобэкапы"></select>
-      <button class="btn" id="bakRestoreBtn">Откатиться</button>
-    </div>
-    <button class="btn" id="resetNoMergeBtn" hidden></button>
-  </div>
 </header>
 
 <nav class="tabs" id="tabs">
@@ -119,6 +71,63 @@
       <button class="btn" id="diceQuick">Без фильтров</button>
     </div>
     <button class="btn dreset" id="diceReset">Сбросить фильтры</button>
+  </div>
+</div>
+
+<div class="results" id="settingsWin" hidden>
+  <div class="win rwin">
+    <div class="rtop">
+      <h2 class="rtitle" id="setTitle">Настройки</h2>
+      <button class="rclose" id="setClose" aria-label="Закрыть">✕</button>
+    </div>
+    <div class="sync setbody">
+    <label class="setrow"><span class="setlabel" id="langLbl">Язык</span>
+      <select id="langSel" aria-label="Language">
+        <option value="ru">Русский</option>
+        <option value="en">English</option>
+      </select></label>
+    <label class="setrow"><span class="setlabel" id="themeLbl">Тема</span>
+      <select id="themeSel" aria-label="Тема оформления">
+        <option value="">Final Fantasy</option>
+        <option value="genesis">Sega Genesis</option>
+      </select></label>
+
+    <div class="sprow">
+      <button class="spoiler col" id="syncSpoiler" aria-expanded="false">
+        <span class="caret">▾</span><span id="syncSpoilerLbl">Синхронизация</span>
+      </button>
+      <button class="infobtn" id="syncHelpBtn" aria-label="Что такое синхронизация">ⓘ</button>
+    </div>
+    <div class="synchelp" id="syncHelp" hidden>
+      <p id="helpWhat"></p>
+      <p id="helpGoogle"></p>
+      <p id="helpGh"></p>
+    </div>
+    <div class="syncbody" id="syncBody" hidden>
+      <input id="gsUrl" placeholder="Google Apps Script URL (…/exec)" autocomplete="off">
+      <div class="hint" style="text-align:center" id="orGist">— или через GitHub Gist —</div>
+      <input id="ghToken" type="password" placeholder="GitHub token" autocomplete="off">
+      <input id="ghGist" placeholder="Gist ID" autocomplete="off">
+      <div class="row2">
+        <button class="btn gold" id="syncConnect">Подключить</button>
+        <button class="btn" id="syncOff">Отключить</button>
+      </div>
+    </div>
+
+    <div class="sethead" id="playniteHead">Playnite</div>
+    <button class="btn" id="csvBtn">Импорт CSV</button>
+
+    <div class="sethead" id="dataHead">Данные</div>
+    <div class="row2">
+      <button class="btn" id="bakBtn">Бэкап</button>
+      <button class="btn" id="resBtn">Восстановить</button>
+    </div>
+    <div class="row2 bakrow">
+      <select id="bakSel" aria-label="Автобэкапы"></select>
+      <button class="btn" id="bakRestoreBtn">Откатиться</button>
+    </div>
+    <button class="btn" id="resetNoMergeBtn" hidden></button>
+    </div>
   </div>
 </div>
 

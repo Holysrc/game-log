@@ -79,7 +79,7 @@ test.describe("merge duplicates ⇆", () => {
     await expect(resetBtn).toBeVisible();
     await expect(resetBtn).toContainText("(1)");
     await resetBtn.click();
-    await page.locator("#gearBtn").click();
+    await page.locator("#setClose").click(); // настройки теперь — окно с ✕
     const again = page.locator(".card.open");
     await expect(again.locator(`button[data-act="mergeask"]`)).toHaveCount(1);
   });
