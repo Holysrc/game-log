@@ -35,7 +35,7 @@ test.describe("merge duplicates ⇆", () => {
   test("edition duplicate merges into one game", async ({ page }, ti) => {
     const { tr } = meta(ti);
     await openApp(page, ti, tinyState());
-    await page.locator(".tab").nth(5).click(); // catalog: every card in status ctx
+    await page.locator(".tab").nth(6).click(); // catalog: every card in status ctx
     const card = await openCard(page, "Skyrim Special Edition");
     await card.locator(`button[data-act="mergeask"]`).click();
     // keep the plain «Skyrim»
@@ -57,7 +57,7 @@ test.describe("merge duplicates ⇆", () => {
 
   test("sequels and same-series games are not offered as duplicates", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
-    await page.locator(".tab").nth(5).click();
+    await page.locator(".tab").nth(6).click();
     const ds = await openCard(page, "Dark Souls 2");
     await expect(ds.locator(`button[data-act="mergeask"]`)).toHaveCount(0);
     await ds.locator(".name").click(); // close
@@ -67,7 +67,7 @@ test.describe("merge duplicates ⇆", () => {
 
   test("«not duplicates» hides the pair and can be reset", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
-    await page.locator(".tab").nth(5).click();
+    await page.locator(".tab").nth(6).click();
     const card = await openCard(page, "Skyrim Special Edition");
     await card.locator(`button[data-act="nomerge"]`).click();
     // card stays open after the ✕ — suggestion must be gone

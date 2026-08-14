@@ -49,7 +49,7 @@ test("desktop ≥860px uses a wide multi-column layout", async ({ page }, ti) =>
 test("desktop grid rows have equal card heights", async ({ page }, ti) => {
   test.skip(meta(ti).form !== "desktop", "desktop layout only");
   await openApp(page, ti, tinyState());
-  await page.locator(".tab").nth(5).click(); // catalog: cards with very different content
+  await page.locator(".tab").nth(6).click(); // catalog: cards with very different content
   const cards = page.locator(".sec .card");
   const a = await cards.nth(0).boundingBox();
   const b = await cards.nth(1).boundingBox();

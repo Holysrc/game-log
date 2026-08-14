@@ -1,5 +1,6 @@
 // Data schema (§3 CLAUDE.md). Changes are additive-only.
-export type Status = "backlog" | "playing" | "done" | "dropped";
+// "onhold" добавлен аддитивно: старые файлы без него читаются как раньше
+export type Status = "backlog" | "playing" | "done" | "dropped" | "onhold";
 
 export interface Game {
   id: number;

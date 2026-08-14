@@ -253,6 +253,7 @@
   .badge.playing{color:var(--gold);border-color:var(--gold)}
   .badge.backlog{color:var(--blue);border-color:var(--blue)}
   .badge.dropped{color:var(--gray);border-color:var(--gray)}
+  .badge.onhold{color:var(--border);border-color:var(--border-dim)}
   .plat{
     flex:0 0 auto;font-size:.64rem;letter-spacing:.05em;
     color:var(--text-dim);border:1px dashed var(--border-dim);border-radius:4px;padding:2px 5px;

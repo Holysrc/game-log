@@ -4,7 +4,7 @@
 export interface Game {
   id: number;
   name: string;
-  status: "backlog" | "playing" | "done" | "dropped";
+  status: "backlog" | "playing" | "done" | "dropped" | "onhold";
   years: number[];
   counts?: Record<number, number>;
   rating?: number | null;
@@ -108,7 +108,8 @@ function finishGame(
 ): Game {
   const roll = r();
   const status: Game["status"] =
-    roll < 0.52 ? "backlog" : roll < 0.82 ? "done" : roll < 0.92 ? "dropped" : "playing";
+    roll < 0.5 ? "backlog" : roll < 0.8 ? "done" : roll < 0.87 ? "dropped"
+      : roll < 0.92 ? "onhold" : "playing";
   const years: number[] = [];
   const counts: Record<number, number> = {};
   if (status === "done" || (status !== "backlog" && chance(0.25))) {

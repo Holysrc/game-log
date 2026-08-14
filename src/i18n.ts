@@ -3,7 +3,7 @@ var LKEY = "gamelog-lang";
 
 export var TR: Record<string, Record<string, string>> = {
 ru:{
-  st_backlog:"Беклог",st_playing:"Играю",st_done:"Пройдено",st_dropped:"Брошено",
+  st_backlog:"Беклог",st_playing:"Играю",st_done:"Пройдено",st_dropped:"Брошено",st_onhold:"Отложено",
   title:"Журнал игр",subtitle:"беклог · прогресс · история прохождений",
   stat_playing:"играю",stat_backlog:"беклог",stat_done:"пройдено",
   tab_all:"Все",tab_catalog:"Каталог",tab_fav:"⚑ Избранное",fav_on:"⚑ В избранное",fav_off:"⚑ Убрать из избранного",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
@@ -56,7 +56,7 @@ ru:{
   gh_bad_token:" — токен не подошёл"
 },
 en:{
-  st_backlog:"Backlog",st_playing:"Playing",st_done:"Beaten",st_dropped:"Dropped",
+  st_backlog:"Backlog",st_playing:"Playing",st_done:"Beaten",st_dropped:"Dropped",st_onhold:"On hold",
   title:"Game Log",subtitle:"backlog · progress · completion history",
   stat_playing:"playing",stat_backlog:"backlog",stat_done:"beaten",
   tab_all:"All",tab_catalog:"Catalog",tab_fav:"⚑ Favorites",fav_on:"⚑ Add to favorites",fav_off:"⚑ Remove from favorites",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",

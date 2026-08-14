@@ -12,8 +12,8 @@ test.describe("tabs & stats", () => {
     await expect(page.locator("#stDone")).toHaveText("5");
 
     const tabs = page.locator(".tab");
-    await expect(tabs).toHaveCount(7);
-    for (let i = 0; i < 7; i++) await expect(tabs.nth(i)).toHaveText(tr.tabs[i]);
+    await expect(tabs).toHaveCount(8);
+    for (let i = 0; i < 8; i++) await expect(tabs.nth(i)).toHaveText(tr.tabs[i]);
 
     await tabs.nth(1).click(); // playing
     await expect(page.locator(".card")).toHaveCount(1);
@@ -23,10 +23,10 @@ test.describe("tabs & stats", () => {
     await expect(page.locator(".card")).toHaveCount(1);
     await expect(page.locator(".card .name")).toHaveText("Zeta Zephyr");
 
-    await tabs.nth(5).click(); // catalog: every game exactly once
+    await tabs.nth(6).click(); // catalog: every game exactly once
     await expect(page.locator(".card")).toHaveCount(12);
 
-    await tabs.nth(6).click(); // favorites
+    await tabs.nth(7).click(); // favorites
     await expect(page.locator(".card")).toHaveCount(1);
     await expect(page.locator(".card .name")).toHaveText("Delta Drift");
   });
@@ -173,13 +173,13 @@ test("favorite toggles and shows ⚑", async ({ page }, ti) => {
   await expect(
     page.locator(".card", { hasText: "Beta Blade" }).locator(".favmark").first()
   ).toBeVisible();
-  await page.locator(".tab").nth(6).click();
+  await page.locator(".tab").nth(7).click();
   await expect(page.locator(".card")).toHaveCount(2);
 });
 
 test("sorts apply and persist", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
-  await page.locator(".tab").nth(5).click(); // catalog
+  await page.locator(".tab").nth(6).click(); // catalog
   await page.locator("#sortSel").selectOption("name");
   await expect(page.locator(".card .name").first()).toHaveText("Alpha Quest");
   await page.locator("#sortSel").selectOption("cs");

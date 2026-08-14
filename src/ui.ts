@@ -25,7 +25,7 @@ function sortItems(arr: Game[]): Game[] {
 
 /* ================= render ================= */
 function counts() {
-  var c: any = { playing: 0, backlog: 0, done: 0, dropped: 0 };
+  var c: any = { playing: 0, backlog: 0, done: 0, dropped: 0, onhold: 0 };
   state.games.forEach(function (g) { c[g.status]++; });
   return c;
 }
@@ -278,6 +278,8 @@ export function render(): void {
     if (filter === "all") {
       html += section("playing", stLabel("playing"), shown.filter(function (g) { return g.status === "playing"; }), null);
       html += section("backlog", stLabel("backlog"), shown.filter(function (g) { return g.status === "backlog"; }), null);
+      // отложенные — «вернусь позже», поэтому рядом с беклогом, а не с брошенными
+      html += section("onhold", stLabel("onhold"), shown.filter(function (g) { return g.status === "onhold"; }), null);
     }
     // годовые группы: по истории прохождений, независимо от текущего статуса
     var years: Record<string, Game[]> = {};
@@ -636,7 +638,7 @@ export function wireUI(): void {
         }
       }
       // статус: берём более «продвинутый»
-      var rank: any = { backlog: 0, dropped: 1, playing: 2, done: 3 };
+      var rank: any = { backlog: 0, dropped: 1, onhold: 2, playing: 3, done: 4 };
       if (rank[absorb.status] > rank[keep.status]) keep.status = absorb.status;
       // поля: у остающейся приоритет, пустоты добираем у второй
       ["platform", "source", "genres", "rel", "cs", "rating", "series"].forEach(function (k) {

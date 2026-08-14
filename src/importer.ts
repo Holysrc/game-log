@@ -40,7 +40,8 @@ export function mapStatus(s: string): Game["status"] {
   if (/beaten|completed|пройден|заверш/.test(s)) return "done";
   if (/^playing|играю/.test(s)) return "playing";
   if (/abandon|брошен/.test(s)) return "dropped";
-  return "backlog"; // Not Played, Plan to Play, On Hold и всё прочее
+  if (/on\s*hold|отложен/.test(s)) return "onhold";
+  return "backlog"; // Not Played, Plan to Play и всё прочее
 }
 
 function importCSVText(text: string): void {

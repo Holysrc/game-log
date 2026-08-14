@@ -5,7 +5,8 @@ import { t } from "./i18n";
 import { toast } from "./util";
 
 export var KEY = "gamelog-v1";
-export var STATUS_KEYS = ["backlog", "playing", "done", "dropped"];
+// порядок задаёт порядок кнопок статуса в карточке
+export var STATUS_KEYS = ["backlog", "playing", "done", "onhold", "dropped"];
 export var COMMON_PLATFORMS = ["PC","PS5","PS4","PS3","PS2","PS1","PSP","PS Vita","Xbox Series","Xbox 360",
   "Switch","Switch 2","Wii","GameCube","N64","SNES","NES","GBA","DS","3DS","Saturn","Dreamcast","Genesis","Steam Deck","Android"];
 export var COMMON_SOURCES = ["Steam","GOG","Epic","Xbox","EA app","Ubisoft Connect","Battle.net","Эмулятор","Диск","Playnite"];
