@@ -845,8 +845,8 @@ export function applyLang(): void {
   document.querySelectorAll(".tab").forEach(function (tb: any) {
     var f = tb.dataset.f;
     if (!f) return; // nodata-чип живёт по своим правилам в render()
-    tb.textContent = f === "all" ? t("tab_all") : (f === "catalog" ? t("tab_catalog") : (f === "fav" ? t("tab_fav") : stLabel(f)));
-    if (f === "all") tb.setAttribute("aria-label", t("tab_all_aria"));
+    if (f === "all") { tb.setAttribute("aria-label", t("tab_all_aria")); return; } // внутри — SVG-домик
+    tb.textContent = f === "catalog" ? t("tab_catalog") : (f === "fav" ? t("tab_fav") : stLabel(f));
   });
   (document.getElementById("search") as HTMLInputElement).placeholder = t("search_ph");
   document.getElementById("addBtn")!.textContent = t("add_btn");
