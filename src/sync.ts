@@ -52,6 +52,7 @@ try {
   if (sc) syncCfg = JSON.parse(sc);
 } catch (e) {}
 var pushTimer: any = null, syncBusy = false;
+var lastPullAt = 0; // throttle window for auto-pull on refocus
 
 export function syncOn(): boolean {
   return !!(syncCfg.gs || (syncCfg.token && syncCfg.gist));
@@ -126,6 +127,7 @@ export function schedulePush(): void {
 }
 export function pullRemote(): void {
   if (!syncOn()) return;
+  lastPullAt = Date.now();
   setStatus(syncLabel() + " · " + t("syncing"));
   remoteGet().then(function (remote) {
     if (!remote || !Array.isArray(remote.games)) { pushRemote(); return; } // там пусто — заливаем своё
@@ -140,16 +142,26 @@ export function pullRemote(): void {
     } else setStatus(syncLabel() + " · " + t("sync") + " " + nowTime());
   }).catch(function (e) { setStatus(t("offline_local") + " (" + e.message + ")", true); });
 }
+// re-pull when returning to the app: a long-lived tab / resumed PWA otherwise
+// keeps its stale startup snapshot forever while the other device moves ahead.
+export function autoPull(): void {
+  if (!syncOn() || document.visibilityState !== "visible") return;
+  if (Date.now() - lastPullAt < 8000) return; // ignore rapid focus toggles
+  pullRemote();
+}
 
 /* ---- панель синхронизации ---- */
+function setSyncSpoiler(open: boolean): void {
+  var body = document.getElementById("syncBody") as any;
+  var sp = document.getElementById("syncSpoiler")!;
+  body.hidden = !open;
+  sp.classList.toggle("col", !open);
+  sp.setAttribute("aria-expanded", String(open));
+}
 export function wireSyncPanel(): void {
   // sync settings live under a spoiler; ⓘ toggles the short how-to
   document.getElementById("syncSpoiler")!.addEventListener("click", function () {
-    var body = document.getElementById("syncBody") as any;
-    var sp = document.getElementById("syncSpoiler")!;
-    body.hidden = !body.hidden;
-    sp.classList.toggle("col", body.hidden);
-    sp.setAttribute("aria-expanded", String(!body.hidden));
+    setSyncSpoiler((document.getElementById("syncBody") as any).hidden);
   });
   document.getElementById("syncHelpBtn")!.addEventListener("click", function () {
     var help = document.getElementById("syncHelp") as any;
@@ -168,6 +180,8 @@ export function wireSyncPanel(): void {
     (document.getElementById("gsUrl") as HTMLInputElement).value = syncCfg.gs || "";
     (document.getElementById("ghToken") as HTMLInputElement).value = syncCfg.token || "";
     (document.getElementById("ghGist") as HTMLInputElement).value = syncCfg.gist || "";
+    // not connected yet → the fields are what the user came for; show them
+    setSyncSpoiler(!syncOn());
   });
   document.getElementById("setClose")!.addEventListener("click", closeSettings);
   document.addEventListener("keydown", function (e: any) {
@@ -217,4 +231,7 @@ export function wireSyncPanel(): void {
     toast(t("sync_off"));
   });
   window.addEventListener("online", function () { if (syncOn()) pullRemote(); });
+  // pick up the other device's changes on return (desktop refocus, PWA resume)
+  document.addEventListener("visibilitychange", autoPull);
+  window.addEventListener("focus", autoPull);
 }
