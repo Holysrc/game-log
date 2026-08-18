@@ -36,8 +36,8 @@ test.describe("@shots key screens", () => {
     await page.locator("#gearBtn").click();
     await expect(page.locator("#settingsWin")).toBeVisible();
     await page.screenshot({ path: shot(ti, "04-settings") });
-    // sync spoiler expanded with the ⓘ help open
-    await page.locator("#syncSpoiler").click();
+    // spoiler is auto-expanded (no sync configured); open the ⓘ help on top
+    await expect(page.locator("#syncBody")).toBeVisible();
     await page.locator("#syncHelpBtn").click();
     await expect(page.locator("#syncHelp")).toBeVisible();
     await page.screenshot({ path: shot(ti, "04b-settings-sync") });
@@ -106,7 +106,7 @@ test.describe("@shots key screens", () => {
     await openApp(page, ti, makeState(300));
     await page.locator("#gearBtn").click();
     await page.locator("#themeSel").selectOption("genesis");
-    await page.locator("#gearBtn").click();
+    await page.locator("#setClose").click(); // settings is a fullscreen window; ✕ closes it
     await page.screenshot({ path: shot(ti, "10-theme-genesis") });
     await page.locator("#resultsBtn").click();
     await expect(page.locator("#resultsWin")).toBeVisible();

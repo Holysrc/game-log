@@ -34,7 +34,8 @@ test("connect via settings pulls newer remote state", async ({ page }, ti) => {
     }
   });
   await page.locator("#gearBtn").click();
-  await page.locator("#syncSpoiler").click(); // sync settings live under a spoiler
+  // not connected → the spoiler opens itself, fields are right there
+  await expect(page.locator("#syncBody")).toBeVisible();
   await page.locator("#ghToken").fill("test-token");
   await page.locator("#ghGist").fill(GIST);
   await page.locator("#syncConnect").click();
@@ -93,7 +94,7 @@ test("Apps Script (Drive) sync connects and pulls newer state", async ({ page },
     }
   });
   await page.locator("#gearBtn").click();
-  await page.locator("#syncSpoiler").click();
+  await expect(page.locator("#syncBody")).toBeVisible();
   await page.locator("#gsUrl").fill(gsUrl);
   await page.locator("#syncConnect").click();
   await expect(page.locator("#stPlaying")).toHaveText("1");
@@ -104,6 +105,38 @@ test("Apps Script (Drive) sync connects and pulls newer state", async ({ page },
   await page.locator(`.card.open button[data-act="fav"]`).click();
   await expect.poll(() => putBody, { timeout: 8000 }).not.toBeNull();
   expect(JSON.parse(putBody!).games.some((g: any) => g.name === "Remote Alpha")).toBe(true);
+});
+
+test("sync spoiler auto-opens while not connected; manual toggle still works", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  await page.locator("#gearBtn").click();
+  await expect(page.locator("#syncBody")).toBeVisible();
+  await expect(page.locator("#syncSpoiler")).toHaveAttribute("aria-expanded", "true");
+  await page.locator("#syncSpoiler").click();
+  await expect(page.locator("#syncBody")).toBeHidden();
+  await page.locator("#syncSpoiler").click();
+  await expect(page.locator("#syncBody")).toBeVisible();
+});
+
+test("sync spoiler stays collapsed when already connected", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState(), {
+    syncCfg: { token: "test-token", gist: GIST },
+    beforeGoto: async () => {
+      // remote equals local (same updatedAt) → pull just refreshes the status line
+      await page.route(`https://api.github.com/gists/${GIST}`, (route) =>
+        route.fulfill({
+          status: 200,
+          json: { files: { "game-log.json": { content: JSON.stringify(tinyState()) } } }
+        })
+      );
+    }
+  });
+  await page.locator("#gearBtn").click();
+  await expect(page.locator("#settingsWin")).toBeVisible();
+  await expect(page.locator("#syncBody")).toBeHidden();
+  await expect(page.locator("#syncSpoiler")).toHaveAttribute("aria-expanded", "false");
+  await page.locator("#syncSpoiler").click(); // still reachable by hand
+  await expect(page.locator("#syncBody")).toBeVisible();
 });
 
 test("sync failure degrades to offline label, data stays local", async ({ page }, ti) => {

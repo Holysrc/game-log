@@ -103,7 +103,8 @@ test.describe("mobile: no horizontal overflow anywhere", () => {
     await openApp(page, ti, tinyState());
     await page.locator("#gearBtn").click();
     await expect(page.locator("#settingsWin")).toBeVisible();
-    await page.locator("#syncSpoiler").click();
+    // no sync configured → spoiler is auto-expanded already
+    await expect(page.locator("#syncBody")).toBeVisible();
     await page.locator("#syncHelpBtn").click();
     await expect(page.locator("#syncHelp")).toBeVisible();
     await expectNoHorizontalOverflow(page);

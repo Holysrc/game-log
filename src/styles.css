@@ -135,10 +135,12 @@
   .sprow{display:flex;align-items:center;gap:4px}
   .spoiler{
     flex:1;display:flex;align-items:center;gap:8px;min-height:44px;
-    border:none;background:none;cursor:pointer;padding:4px;text-align:left;
+    border:1.5px solid var(--border-dim);border-radius:8px;
+    background:rgba(var(--ink2),.6);cursor:pointer;padding:4px 12px;text-align:left;
     font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif;
     letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;color:var(--gold);
   }
+  .spoiler:active{transform:translateY(1px)}
   .spoiler .caret{color:var(--gold);font-size:.7rem;transition:transform .15s}
   .spoiler.col .caret{transform:rotate(-90deg)}
   @media (prefers-reduced-motion:reduce){.spoiler .caret{transition:none}}

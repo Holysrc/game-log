@@ -142,14 +142,17 @@ export function pullRemote(): void {
 }
 
 /* ---- панель синхронизации ---- */
+function setSyncSpoiler(open: boolean): void {
+  var body = document.getElementById("syncBody") as any;
+  var sp = document.getElementById("syncSpoiler")!;
+  body.hidden = !open;
+  sp.classList.toggle("col", !open);
+  sp.setAttribute("aria-expanded", String(open));
+}
 export function wireSyncPanel(): void {
   // sync settings live under a spoiler; ⓘ toggles the short how-to
   document.getElementById("syncSpoiler")!.addEventListener("click", function () {
-    var body = document.getElementById("syncBody") as any;
-    var sp = document.getElementById("syncSpoiler")!;
-    body.hidden = !body.hidden;
-    sp.classList.toggle("col", body.hidden);
-    sp.setAttribute("aria-expanded", String(!body.hidden));
+    setSyncSpoiler((document.getElementById("syncBody") as any).hidden);
   });
   document.getElementById("syncHelpBtn")!.addEventListener("click", function () {
     var help = document.getElementById("syncHelp") as any;
@@ -168,6 +171,8 @@ export function wireSyncPanel(): void {
     (document.getElementById("gsUrl") as HTMLInputElement).value = syncCfg.gs || "";
     (document.getElementById("ghToken") as HTMLInputElement).value = syncCfg.token || "";
     (document.getElementById("ghGist") as HTMLInputElement).value = syncCfg.gist || "";
+    // not connected yet → the fields are what the user came for; show them
+    setSyncSpoiler(!syncOn());
   });
   document.getElementById("setClose")!.addEventListener("click", closeSettings);
   document.addEventListener("keydown", function (e: any) {
