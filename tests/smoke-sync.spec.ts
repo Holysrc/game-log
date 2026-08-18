@@ -139,6 +139,32 @@ test("sync spoiler stays collapsed when already connected", async ({ page }, ti)
   await expect(page.locator("#syncBody")).toBeVisible();
 });
 
+test("returning to a long-open app pulls the other device's newer state", async ({ page }, ti) => {
+  const { tr } = meta(ti);
+  let serveNewer = false; // the other device hasn't moved yet
+  await page.clock.install();
+  await openApp(page, ti, tinyState(), {
+    syncCfg: { token: "test-token", gist: GIST },
+    beforeGoto: async () => {
+      await page.route(`https://api.github.com/gists/${GIST}`, (route) => {
+        const body = serveNewer ? remoteState(9999999999999) : tinyState(); // startup: same updatedAt
+        return route.fulfill({
+          status: 200,
+          json: { files: { "game-log.json": { content: JSON.stringify(body) } } }
+        });
+      });
+    }
+  });
+  // startup pull saw an equal snapshot → nothing pulled in yet
+  await expect(page.locator(".card", { hasText: "Remote Alpha" })).toHaveCount(0);
+  // the other device moves ahead; user tabs away and comes back
+  serveNewer = true;
+  await page.clock.fastForward(9000); // clear the auto-pull throttle
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(page.locator(".card", { hasText: "Remote Alpha" }).first()).toBeVisible();
+  await expect(page.locator("#fstatus")).toContainText(`gist · ${tr.sync}`);
+});
+
 test("sync failure degrades to offline label, data stays local", async ({ page }, ti) => {
   allowConsole(page, /Failed to load resource/); // aborted mock request is the point
   await openApp(page, ti, tinyState(), {
