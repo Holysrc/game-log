@@ -8,7 +8,7 @@ test("all visible chrome is translated", async ({ page }, ti) => {
   await expect(page.locator("h1")).toHaveText(tr.title);
   const tabs = page.locator(".tab");
   for (let i = 0; i < tr.tabs.length; i++) await expect(tabs.nth(i)).toHaveText(tr.tabs[i]);
-  await expect(page.locator("#addBtn")).toHaveText(tr.add);
+  await expect(page.locator("#addBtn")).toHaveAttribute("aria-label", tr.add); // кнопка-иконка «+»
   await expect(page.locator("#search")).toHaveAttribute("placeholder", tr.searchPh);
 
   // switching language re-renders everything
@@ -39,21 +39,48 @@ test("desktop ≥860px uses a wide multi-column layout", async ({ page }, ti) =>
   await openApp(page, ti, tinyState());
   const bodyW = await page.evaluate(() => document.body.getBoundingClientRect().width);
   expect(bodyW, "desktop body must be wider than the 560px phone column").toBeGreaterThan(700);
-  const secDisplay = await page
-    .locator(".sec")
+  // «Играю» — витрина карточек: на десктопе сетка в две колонки
+  const cols = await page
+    .locator(".cards")
     .first()
-    .evaluate((el) => getComputedStyle(el).display);
-  expect(secDisplay).toBe("grid");
+    .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  expect(cols).toBe(2);
 });
 
 test("desktop grid rows have equal card heights", async ({ page }, ti) => {
   test.skip(meta(ti).form !== "desktop", "desktop layout only");
   await openApp(page, ti, tinyState());
   await page.locator(".tab").nth(6).click(); // catalog: cards with very different content
-  const cards = page.locator(".sec .card");
+  await page.locator("#viewBtn").click(); // список → карточки
+  const cards = page.locator(".cards .card");
   const a = await cards.nth(0).boundingBox();
   const b = await cards.nth(1).boundingBox();
   expect(Math.abs(a!.height - b!.height), "side-by-side cards must align").toBeLessThanOrEqual(1);
+});
+
+test("desktop cards: detail opens full-width below the row, neighbor keeps height", async ({ page }, ti) => {
+  test.skip(meta(ti).form !== "desktop", "desktop layout only");
+  await openApp(page, ti, tinyState());
+  await page.locator(".tab").nth(6).click(); // catalog
+  await page.locator("#viewBtn").click(); // список → карточки
+  const tiles = page.locator(".cards .card");
+  const before = (await tiles.nth(1).boundingBox())!;
+  await tiles.nth(0).locator(".name").click();
+  const detail = page.locator(".dcell .detail");
+  await expect(detail).toBeVisible();
+  // сосед по ряду не растянулся
+  const after = (await tiles.nth(1).boundingBox())!;
+  expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
+  // окно раскрытия — на всю ширину сетки и ниже ряда
+  const gridBox = (await page.locator(".cards").first().boundingBox())!;
+  const dBox = (await page.locator(".dcell").boundingBox())!;
+  expect(dBox.width).toBeGreaterThan(gridBox.width * 0.95);
+  const tileBox = (await tiles.nth(0).boundingBox())!;
+  expect(dBox.y).toBeGreaterThanOrEqual(tileBox.y + tileBox.height - 2);
+  // раскрытая карточка выделена контуром — отличается от закрытого соседа
+  const openBorder = await tiles.nth(0).evaluate((el) => getComputedStyle(el).borderTopColor);
+  const closedBorder = await tiles.nth(1).evaluate((el) => getComputedStyle(el).borderTopColor);
+  expect(openBorder).not.toBe(closedBorder);
 });
 
 test("theme switching applies Sega Genesis palette and persists", async ({ page }, ti) => {

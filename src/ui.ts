@@ -1,4 +1,6 @@
-// Rendering + all list/chrome interaction. Faithful port of the legacy IIFE.
+// Rendering + all list/chrome interaction.
+// Redesign: compact rows / card tiles, expandable FF sub-window with a
+// view mode (quick actions only) and an explicit edit mode («Изменить»).
 import type { Game } from "./types";
 import {
   state, save, cnt, addYear, yLabel,
@@ -9,9 +11,19 @@ import { esc, norm, toast } from "./util";
 
 /* ================= ui state ================= */
 export var filter = "all", query = "", openId: string | null = null, mergeAsk: any = null;
+var editKey: string | null = null;          // card in edit mode (always === openId)
+var editPendingStatus: string | null = null; // status picked in the edit form, applied on save
+var armDelKey: string | null = null;        // delete button waits for the confirming tap
+var armDelTimer: any = null;
+var noteEditKey: string | null = null;      // quick note editor (📝) open on this card
+var animKey: string | null = null;          // play the open animation only for a REAL open,
+                                            // not for in-place detail updates (📝, «Изменить»)
 var SORTKEY = "gamelog-sort";
 var sortMode = "default";
 try { sortMode = localStorage.getItem(SORTKEY) || "default"; } catch (e) {}
+var VIEWKEY = "gamelog-view";
+var viewMode = "list"; // list | cards — device-local, «Играю» is always cards
+try { viewMode = localStorage.getItem(VIEWKEY) === "cards" ? "cards" : "list"; } catch (e) {}
 
 export function setOpenId(v: string | null): void { openId = v; }
 
@@ -30,186 +42,349 @@ export var FLAG_SVG = '<svg class="flagicon" viewBox="2334 4108 3832 2785" width
   + '</svg>';
 
 
+// toolbar view-toggle icons (currentColor, theme-aware)
+var ICON_LIST = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">'
+  + '<rect x="3" y="5" width="18" height="2.6" rx="1"/><rect x="3" y="10.7" width="18" height="2.6" rx="1"/>'
+  + '<rect x="3" y="16.4" width="18" height="2.6" rx="1"/></svg>';
+var ICON_GRID = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">'
+  + '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/>'
+  + '<rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>';
+
+// кнопка вида: иконка ЦЕЛЕВОГО режима (что будет по тапу)
+function refreshViewBtn(): void {
+  var vb = document.getElementById("viewBtn")!;
+  var target = viewMode === "cards" ? "view_list" : "view_cards";
+  vb.innerHTML = viewMode === "cards" ? ICON_LIST : ICON_GRID;
+  vb.setAttribute("aria-label", t("view_aria"));
+  vb.setAttribute("title", t(target));
+}
+
+// кнопка сортировки подсвечена, пока активна не «Без сортировки»
+function refreshSortCtl(): void {
+  var c = document.getElementById("sortCtl");
+  if (c) c.classList.toggle("on", sortMode !== "default");
+}
+
 function counts() {
   var c: any = { playing: 0, backlog: 0, done: 0, dropped: 0, onhold: 0 };
   state.games.forEach(function (g) { c[g.status]++; });
   return c;
 }
 
-function cardHTML(g: Game, ctx: number | null): string {
-  // ctx: null — карточка в секции статуса; число — экземпляр в группе года (0 = Давно)
-  var key = g.id + "@" + (ctx === null ? "s" : ctx);
-  var open = key === openId;
-  var cy = new Date().getFullYear();
+function coverColor(name: string): string {
+  var h = 0;
+  for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+  return "linear-gradient(165deg,hsl(" + h + " 40% 36%),hsl(" + ((h + 40) % 360) + " 55% 12%))";
+}
 
-  var badge;
+// VT323 digits + a small system-font unit («41 ч» — units aren't in the pixel font)
+function fmtTime(sec: number): string {
+  var h = sec / 3600;
+  return h >= 1
+    ? Math.round(h) + '<span class="unit">' + t("h") + '</span>'
+    : Math.round(sec / 60) + '<span class="unit">' + t("min") + '</span>';
+}
+
+function badgeHTML(g: Game, ctx: number | null): string {
   if (ctx !== null) {
     var cc = cnt(g, +ctx);
     var mult = cc > 1 ? " ×" + cc : "";
-    badge = '<span class="badge done">' + stLabel("done") + ' · ' + yLabel(ctx) + mult + '</span>';
-  } else {
-    badge = '<span class="badge ' + g.status + '">' + stLabel(g.status) + '</span>';
+    return '<span class="badge done">' + stLabel("done") + ' · ' + yLabel(ctx) + mult + '</span>';
   }
-  // в секции статуса покажем историю прохождений чипом
-  var histChip = "";
-  if (ctx === null && g.years.length) {
-    var hist = g.years.map(function (y) {
-      var yc = cnt(g, +y);
-      return (+y === 0 ? t("ago_short") : y) + (yc > 1 ? "×" + yc : "");
-    }).join(", ");
-    histChip = '<span class="plat">✓ ' + hist + '</span>';
-  }
-  var noteChip = g.note ? '<span class="plat">📝</span>' : "";
+  return '<span class="badge ' + g.status + '">' + stLabel(g.status) + '</span>';
+}
 
-  var actions = "";
-  if (open) {
-    actions += '<input class="platinput namefield" data-act="rename" placeholder="' + t("name_ph") + '" '
-      + 'value="' + esc(g.name) + '">';
-    actions += '<button class="btn favbtn' + (g.fav ? " gold" : "") + '" data-act="fav">' + FLAG_SVG + (g.fav ? t("fav_off") : t("fav_on")) + '</button>';
-    if (ctx === null) {
-      actions += STATUS_KEYS.filter(function (s) { return s !== g.status && s !== "done"; })
-        .map(function (s) {
-          return '<button class="btn" data-act="status" data-s="' + s + '">' + stLabel(s) + '</button>';
-        }).join("");
-      // добавить прохождение в любом году
-      var missing: number[] = [];
-      for (var ay = cy; ay >= 2000; ay--) if (g.years.indexOf(ay) === -1) missing.push(ay);
-      var oldOpt = g.years.indexOf(0) === -1 ? '<option value="old">' + t("long_ago") + '</option>' : "";
-      if (missing.length || oldOpt) {
-        actions += '<span class="mpair">'
-          + '<select data-act="addyearsel" class="gold">'
-          + '<option value="">' + t("add_year") + '</option>'
-          + missing.map(function (y) { return '<option value="' + y + '">' + y + '</option>'; }).join("")
-          + oldOpt
-          + '</select>'
-          + '<span class="xmark">×</span>'
-          + '<input class="platinput oldcnt" data-role="precount" type="number" min="1" max="99" value="1" title="' + t("times").trim() + '">'
-          + '</span>';
-      }
+function historyText(g: Game): string {
+  return g.years.map(function (y) {
+    var yc = cnt(g, +y);
+    return (+y === 0 ? t("ago_short") : y) + (yc > 1 ? "×" + yc : "");
+  }).join(", ");
+}
+
+function csChip(g: Game): string {
+  if (!g.cs) return "";
+  var csCls = g.cs >= 80 ? "hi" : (g.cs >= 60 ? "mid" : "");
+  return '<span class="cs ' + csCls + '" title="' + t("cs_title") + '">' + g.cs + '</span>';
+}
+
+function starsStatic(g: Game): string {
+  if (!g.rating && !g.cs) return "";
+  var out = '<span class="stars"' + (g.rating ? ' aria-label="' + t("rating_aria").replace("{r}", String(g.rating)) + '"' : '') + '>';
+  if (g.rating) {
+    for (var s = 1; s <= 5; s++) out += (s <= g.rating ? '★' : '<span class="off">★</span>');
+  }
+  out += '</span>';
+  return out + csChip(g);
+}
+
+// «+ Прошёл в…» quick action (view mode), with the ×N multiplier in status ctx
+function addYearSelHTML(g: Game, ctx: number | null): string {
+  var cy = new Date().getFullYear();
+  var missing: number[] = [];
+  for (var ay = cy; ay >= 2000; ay--) if (g.years.indexOf(ay) === -1) missing.push(ay);
+  var oldOpt = g.years.indexOf(0) === -1 ? '<option value="old">' + t("long_ago") + '</option>' : "";
+  if (!missing.length && !oldOpt) return "";
+  var sel = '<select data-act="addyearsel" class="gold">'
+    + '<option value="">' + t("add_year") + '</option>'
+    + missing.map(function (y) { return '<option value="' + y + '">' + y + '</option>'; }).join("")
+    + oldOpt
+    + '</select>';
+  if (ctx !== null) return sel;
+  return '<span class="mpair">' + sel
+    + '<span class="xmark">×</span>'
+    + '<input class="input oldcnt" data-role="precount" type="number" min="1" max="99" value="1" title="' + t("times").trim() + '">'
+    + '<span class="unit">' + t("times") + '</span>'
+    + '</span>';
+}
+
+// duplicate-merge suggestions (view mode) — names compared without edition noise
+function mergeHTML(g: Game): string {
+  var EDITION_WORDS = ["goty", "game", "of", "the", "year", "edition", "remastered", "remaster",
+    "definitive", "complete", "deluxe", "enhanced", "directors", "director", "cut", "hd",
+    "ultimate", "gold", "collection", "anniversary", "special", "legendary",
+    "s", "re", "intergrade", "royal", "expanded"];
+  var dupKey = function (name: string): string {
+    return norm(name).split(" ").filter(function (w) {
+      return EDITION_WORDS.indexOf(w) === -1;
+    }).join(" ").trim();
+  };
+  var gk = dupKey(g.name);
+  if (gk.length < 4) return "";
+  var isSequelTail = function (rem: string): boolean {
+    // остаток из чисел/римских цифр = сиквел, а не издание
+    return rem.split(" ").every(function (w) {
+      return /^\d+$/.test(w) || /^[ivxlcdm]+$/.test(w);
+    });
+  };
+  var cands = state.games.filter(function (o) {
+    if (o.id === g.id) return false;
+    if (g.series && o.series && g.series === o.series && dupKey(o.name) !== gk) return false; // одна серия — не дубль
+    var ok = dupKey(o.name);
+    if (ok.length < 4) return false;
+    if (ok === gk) return true;
+    var longK = ok.length > gk.length ? ok : gk, shortK = ok.length > gk.length ? gk : ok;
+    if (longK.indexOf(shortK) !== 0) return false; // интересует только общий префикс
+    var rem = longK.slice(shortK.length).trim();
+    return rem !== "" && !isSequelTail(rem);
+  }).slice(0, 2);
+  var pairKey = function (a: number, b: number): string { return Math.min(a, b) + "-" + Math.max(a, b); };
+  cands = cands.filter(function (o) { return state.noMerge!.indexOf(pairKey(g.id, o.id)) === -1; });
+  var out = "";
+  cands.forEach(function (o) {
+    if (mergeAsk && mergeAsk.id === g.id && mergeAsk.mid === o.id) {
+      out += '<span class="mchoose">' + t("merge_keep")
+        + '<button class="btn gold" data-act="mergekeep" data-mid="' + o.id + '" data-keep="this">«' + esc(g.name) + '»</button>'
+        + '<button class="btn gold" data-act="mergekeep" data-mid="' + o.id + '" data-keep="other">«' + esc(o.name) + '»</button>'
+        + '<button class="btn" data-act="mergecancel">' + t("cancel") + '</button></span>';
     } else {
-      var yearOpts = '<option value="0"' + (+ctx === 0 ? " selected" : "") + '>' + t("long_ago") + '</option>';
-      for (var y = cy + 1; y >= 2000; y--) {
-        yearOpts += '<option value="' + y + '"' + (+ctx === y ? " selected" : "") + '>' + y + '</option>';
-      }
-      actions += '<select data-act="year">' + yearOpts + '</select>';
-      actions += '<input class="platinput oldcnt" data-act="oldcount" type="number" min="1" max="99" '
-        + 'value="' + cnt(g, +ctx) + '">' + t("times");
-      actions += '<button class="btn" data-act="rmyear">' + t("remove_from").replace("{y}", String(yLabel(ctx))) + '</button>';
-      var missing2: number[] = [];
-      for (var ay2 = cy; ay2 >= 2000; ay2--) if (g.years.indexOf(ay2) === -1) missing2.push(ay2);
-      var oldOpt2 = g.years.indexOf(0) === -1 ? '<option value="old">' + t("long_ago") + '</option>' : "";
-      if (missing2.length || oldOpt2) {
-        actions += '<select data-act="addyearsel" class="gold">'
-          + '<option value="">' + t("add_year") + '</option>'
-          + missing2.map(function (y) { return '<option value="' + y + '">' + y + '</option>'; }).join("")
-          + oldOpt2
-          + '</select>';
-      }
+      out += '<span class="mpair">'
+        + '<button class="btn gold" data-act="mergeask" data-mid="' + o.id + '">'
+        + t("merge_with").replace("{n}", esc(o.name)) + '</button>'
+        + '<button class="btn nomerge" data-act="nomerge" data-mid="' + o.id + '" title="' + t("not_dupes") + '">✕</button></span>';
     }
-    actions += '<span class="sugwrap"><input class="platinput" data-act="plat" placeholder="' + t("platform") + '" '
-      + 'value="' + (g.platform ? esc(g.platform) : "") + '"><div class="sug"></div></span>';
-    actions += '<span class="sugwrap"><input class="platinput" data-act="src" placeholder="' + t("launcher") + '" '
-      + 'value="' + (g.source ? esc(g.source) : "") + '"><div class="sug"></div></span>';
-    actions += '<input class="platinput oldcnt" data-act="rel" type="number" min="1970" max="2030" placeholder="' + t("rel_ph") + '" '
-      + 'value="' + (g.rel || "") + '" style="width:110px">';
-    actions += '<input class="platinput" data-act="genres" placeholder="' + t("genres_ph") + '" '
-      + 'value="' + (g.genres ? esc(g.genres) : "") + '" style="width:160px">';
-    actions += '<span class="sugwrap"><input class="platinput" data-act="series" placeholder="' + t("series_ph") + '" '
-      + 'value="' + (g.series ? esc(g.series) : "") + '" style="width:150px"><div class="sug"></div></span>';
-    if (g.status === "done" || g.status === "dropped" || g.years.length) {
-      actions += '<div class="rate" role="group">';
-      for (var r = 1; r <= 5; r++) {
-        actions += '<button class="star' + (g.rating && r <= g.rating ? " on" : "")
-          + '" data-act="rate" data-v="' + r + '">★</button>';
-      }
-      actions += '</div>';
-    }
-    actions += '<textarea class="noteinput" data-act="note" placeholder="' + t("note_ph") + '">' + (g.note ? esc(g.note) : "") + '</textarea>';
-    // возможные дубли: сравниваем названия без «шумовых» слов изданий
-    var EDITION_WORDS = ["goty", "game", "of", "the", "year", "edition", "remastered", "remaster",
-      "definitive", "complete", "deluxe", "enhanced", "directors", "director", "cut", "hd",
-      "ultimate", "gold", "collection", "anniversary", "special", "legendary",
-      "s", "re", "intergrade", "royal", "expanded"];
-    var dupKey = function (name: string): string {
-      return norm(name).split(" ").filter(function (w) {
-        return EDITION_WORDS.indexOf(w) === -1;
-      }).join(" ").trim();
-    };
-    var gk = dupKey(g.name);
-    if (gk.length >= 4) {
-      var isSequelTail = function (rem: string): boolean {
-        // остаток из чисел/римских цифр = сиквел, а не издание
-        return rem.split(" ").every(function (w) {
-          return /^\d+$/.test(w) || /^[ivxlcdm]+$/.test(w);
-        });
-      };
-      var cands = state.games.filter(function (o) {
-        if (o.id === g.id) return false;
-        if (g.series && o.series && g.series === o.series && dupKey(o.name) !== gk) return false; // одна серия — не дубль
-        var ok = dupKey(o.name);
-        if (ok.length < 4) return false;
-        if (ok === gk) return true;
-        var longK = ok.length > gk.length ? ok : gk, shortK = ok.length > gk.length ? gk : ok;
-        if (longK.indexOf(shortK) !== 0) return false; // интересует только общий префикс
-        var rem = longK.slice(shortK.length).trim();
-        return rem !== "" && !isSequelTail(rem);
-      }).slice(0, 2);
-      var pairKey = function (a: number, b: number): string { return Math.min(a, b) + "-" + Math.max(a, b); };
-      cands = cands.filter(function (o) { return state.noMerge!.indexOf(pairKey(g.id, o.id)) === -1; });
-      cands.forEach(function (o) {
-        if (mergeAsk && mergeAsk.id === g.id && mergeAsk.mid === o.id) {
-          actions += '<span class="mchoose">' + t("merge_keep")
-            + '<button class="btn gold" data-act="mergekeep" data-mid="' + o.id + '" data-keep="this">«' + esc(g.name) + '»</button>'
-            + '<button class="btn gold" data-act="mergekeep" data-mid="' + o.id + '" data-keep="other">«' + esc(o.name) + '»</button>'
-            + '<button class="btn" data-act="mergecancel">' + t("cancel") + '</button></span>';
-        } else {
-          actions += '<span class="mpair">'
-            + '<button class="btn gold" data-act="mergeask" data-mid="' + o.id + '">'
-            + t("merge_with").replace("{n}", esc(o.name)) + '</button>'
-            + '<button class="btn nomerge" data-act="nomerge" data-mid="' + o.id + '" title="' + t("not_dupes") + '">✕</button></span>';
-        }
-      });
-    }
-    actions += '<button class="btn del" data-act="del">' + t("del") + '</button>';
-  } // конец if(open) — закрытым карточкам панель действий не нужна
+  });
+  return out;
+}
 
-  var starsView = "";
-  if (g.rating || g.cs) {
-    starsView = '<div class="stars"' + (g.rating ? ' aria-label="' + t("rating_aria").replace("{r}", String(g.rating)) + '"' : '') + '>';
-    if (g.rating) {
-      for (var s = 1; s <= 5; s++) starsView += (s <= g.rating ? '★' : '<span class="off">★</span>');
-    }
-    if (g.cs) {
-      var csCls = g.cs >= 80 ? "hi" : (g.cs >= 60 ? "mid" : "");
-      starsView += '<span class="cs ' + csCls + '" title="' + t("cs_title") + '">' + g.cs + '</span>';
-    }
-    starsView += '</div>';
+function fieldHTML(label: string, valueHTML: string, cls?: string): string {
+  return '<div class="field' + (cls ? " " + cls : "") + '"><span class="flabel">' + label + '</span>'
+    + '<div class="fval' + (cls === "num" ? " num" : "") + '">' + valueHTML + '</div></div>';
+}
+
+/* ---- expanded sub-window: view mode ---- */
+function detailViewHTML(g: Game, ctx: number | null, key: string): string {
+  var d = '<div class="detail' + (animKey === key ? " anim" : "") + '">';
+  d += '<div class="dhead"><h4 class="dname">' + esc(g.name) + '</h4>'
+    // быстрое добавление заметки: 📝 виден, пока заметки нет
+    + (!g.note ? '<button class="iconbtn" data-act="noteadd" aria-label="' + t("lbl_note") + '">📝</button>' : '')
+    + '<button class="iconbtn favtop' + (g.fav ? " on" : "") + '" data-act="fav" aria-label="'
+    + (g.fav ? t("fav_off") : t("fav_on")) + '">' + FLAG_SVG + '</button>'
+    + '<button class="iconbtn" data-act="close" aria-label="' + t("res_close") + '">✕</button></div>';
+
+  d += '<div class="fields">';
+  d += '<div class="field"><span class="flabel">' + t("lbl_status") + '</span>'
+    + '<div class="fval">' + badgeHTML(g, ctx) + '</div></div>';
+  if (g.years.length) {
+    d += fieldHTML(t("lbl_history"), "✓ " + historyText(g));
   }
-  var metaParts: string[] = [];
-  if (g.rel) metaParts.push(String(g.rel));
-  if (g.genres) metaParts.push(esc(g.genres));
+  d += fieldHTML(t("platform"), g.platform ? esc(g.platform) : "—");
+  d += fieldHTML(t("launcher"), g.source ? esc(g.source) : "—");
+  d += fieldHTML(t("genres_ph"), g.genres ? esc(g.genres) : "—");
+  d += '<div class="field"><span class="flabel">' + t("rel_ph") + '</span>'
+    + '<div class="fval num">' + (g.rel || "—") + '</div></div>';
   if (g.time) {
-    var h = g.time / 3600;
-    metaParts.push('<span class="tp">⏱ ' + (h >= 1 ? Math.round(h) + t("h") : Math.round(g.time / 60) + t("min")) + '</span>');
+    d += '<div class="field"><span class="flabel">' + t("lbl_time") + '</span>'
+      + '<div class="fval num">' + fmtTime(g.time) + '</div></div>';
   }
-  var metaView = metaParts.length ? '<div class="meta">' + metaParts.join(" · ") + '</div>' : "";
+  d += fieldHTML(t("series_ph"), g.series ? esc(g.series) : "—");
+  // rating: interactive stars stay a one-tap quick action (core test);
+  // community score lives under its own label — it is not the user's rating
+  if (g.status === "done" || g.status === "dropped" || g.years.length) {
+    var rateH = '<div class="rate" role="group">';
+    for (var r = 1; r <= 5; r++) {
+      rateH += '<button class="star' + (g.rating && r <= g.rating ? " on" : "")
+        + '" data-act="rate" data-v="' + r + '">★</button>';
+    }
+    rateH += '</div>';
+    d += '<div class="field"><span class="flabel">' + t("lbl_rating") + '</span>'
+      + '<div class="fval">' + rateH + '</div></div>';
+  }
+  if (g.cs) {
+    d += '<div class="field"><span class="flabel">' + t("lbl_cs") + '</span>'
+      + '<div class="fval">' + csChip(g) + '</div></div>';
+  }
+  if (g.note) {
+    d += fieldHTML(t("lbl_note"), '<span class="prewrap">' + esc(g.note) + '</span>', "fwide");
+  }
+  d += '</div>'; // .fields
 
-  var chips = "";
-  if (g.platform) chips += '<span class="plat">' + esc(g.platform) + '</span>';
-  if (g.source) chips += '<span class="src">' + esc(g.source) + '</span>';
-  if (g.series) chips += '<span class="ser" data-act="serfilter">❖ ' + esc(g.series) + '</span>';
-  chips += histChip + noteChip;
-  var chipsView = chips ? '<div class="chips">' + chips + '</div>' : "";
+  var quick = addYearSelHTML(g, ctx);
+  if (quick) d += '<div class="qrow">' + quick + '</div>';
+  var mg = mergeHTML(g);
+  if (mg) d += '<div class="qrow">' + mg + '</div>';
+  // поле новой заметки открывается по 📝 внизу карточки, без режима «Изменить»
+  if (noteEditKey === key) {
+    d += '<div class="qrow"><textarea class="textarea" data-act="notequick" placeholder="'
+      + t("note_ph") + '"></textarea></div>';
+  }
 
-  return '<div class="card win ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + (ctx === null ? "s" : ctx) + '">'
+  var armed = armDelKey === key;
+  d += '<div class="commands">'
+    + '<button class="cmd cmd--primary" data-act="edit">' + t("edit") + '</button>'
+    + '<button class="cmd cmd--danger' + (armed ? " armed" : "") + '" data-act="del">'
+    + (armed ? t("del_sure") : t("del")) + '</button>'
+    + '</div>';
+  return d + '</div>';
+}
+
+/* ---- expanded sub-window: edit mode ---- */
+function editFormHTML(g: Game, ctx: number | null): string {
+  var cy = new Date().getFullYear();
+  var d = '<div class="detail editing">';
+  d += '<div class="dhead"><h4 class="dname">' + esc(g.name) + '</h4></div>';
+  d += '<div class="fields">';
+  d += '<div class="field fwide"><span class="flabel">' + t("name_ph") + '</span>'
+    + '<input class="input" data-ed="name" value="' + esc(g.name) + '"></div>';
+  if (ctx === null) {
+    var pick = STATUS_KEYS.filter(function (s) { return s !== "done"; })
+      .map(function (s) {
+        return '<button class="opt" data-act="picks" data-s="' + s + '" aria-pressed="'
+          + (s === (editPendingStatus || g.status)) + '">' + stLabel(s) + '</button>';
+      }).join("");
+    d += '<div class="field fwide"><span class="flabel">' + t("lbl_status") + '</span>'
+      + '<div class="status-pick">' + pick + '</div></div>';
+  } else {
+    var yearOpts = '<option value="0"' + (+ctx === 0 ? " selected" : "") + '>' + t("long_ago") + '</option>';
+    for (var y = cy + 1; y >= 2000; y--) {
+      yearOpts += '<option value="' + y + '"' + (+ctx === y ? " selected" : "") + '>' + y + '</option>';
+    }
+    d += '<div class="field fwide"><span class="flabel">' + stLabel("done") + '</span>'
+      + '<div class="qrow" style="margin-top:0">'
+      + '<select data-ed="year">' + yearOpts + '</select>'
+      + '<input class="input oldcnt" data-ed="oldcount" type="number" min="1" max="99" value="' + cnt(g, +ctx) + '">'
+      + '<span class="unit">' + t("times") + '</span>'
+      + '<button class="btn" data-act="rmyear">' + t("remove_from").replace("{y}", String(yLabel(ctx))) + '</button>'
+      + '</div></div>';
+  }
+  d += '<div class="field"><span class="flabel">' + t("platform") + '</span>'
+    + '<span class="sugwrap"><input class="input" data-ed="plat" value="'
+    + (g.platform ? esc(g.platform) : "") + '"><div class="sug"></div></span></div>';
+  d += '<div class="field"><span class="flabel">' + t("launcher") + '</span>'
+    + '<span class="sugwrap"><input class="input" data-ed="src" value="'
+    + (g.source ? esc(g.source) : "") + '"><div class="sug"></div></span></div>';
+  d += '<div class="field"><span class="flabel">' + t("genres_ph") + '</span>'
+    + '<input class="input" data-ed="genres" value="' + (g.genres ? esc(g.genres) : "") + '"></div>';
+  d += '<div class="field"><span class="flabel">' + t("rel_ph") + '</span>'
+    + '<input class="input relinput" data-ed="rel" type="number" min="1970" max="2030" value="' + (g.rel || "") + '"></div>';
+  d += '<div class="field"><span class="flabel">' + t("series_ph") + '</span>'
+    + '<span class="sugwrap"><input class="input" data-ed="series" value="'
+    + (g.series ? esc(g.series) : "") + '"><div class="sug"></div></span></div>';
+  d += '<div class="field fwide"><span class="flabel">' + t("lbl_note") + '</span>'
+    + '<textarea class="textarea" data-ed="note" placeholder="' + t("note_ph") + '">'
+    + (g.note ? esc(g.note) : "") + '</textarea></div>';
+  d += '</div>'; // .fields
+  d += '<div class="commands">'
+    + '<button class="cmd" data-act="canceledit">' + t("cancel") + '</button>'
+    + '<button class="cmd cmd--primary" data-act="saveedit">' + t("save") + '</button>'
+    + '</div>';
+  return d + '</div>';
+}
+
+function detailHTML(g: Game, ctx: number | null, key: string): string {
+  return editKey === key ? editFormHTML(g, ctx) : detailViewHTML(g, ctx, key);
+}
+
+function dcellHTML(g: Game, ctx: number | null, key: string): string {
+  var ctxs = ctx === null ? "s" : String(ctx);
+  return '<div class="dcell" data-id="' + g.id + '" data-ctx="' + ctxs + '">'
+    + detailHTML(g, ctx, key) + '</div>';
+}
+
+// вставить .dcell после КОНЦА РЯДА тайла: в 2 колонки — после соседа справа
+function insertDcellAfterRow(tileEl: Element, html: string): void {
+  var cardsBox = tileEl.parentElement!;
+  var kids = Array.prototype.filter.call(cardsBox.children, function (n: Element) {
+    return n.classList.contains("card");
+  });
+  var idx = kids.indexOf(tileEl);
+  var cols = typeof matchMedia !== "undefined" && matchMedia("(min-width:640px)").matches ? 2 : 1;
+  var end = Math.min(idx + (cols === 2 && idx % 2 === 0 ? 1 : 0), kids.length - 1);
+  (kids[end] as Element).insertAdjacentHTML("afterend", html);
+}
+
+/* ---- list row / card tile ---- */
+function cardHTML(g: Game, ctx: number | null, kind: string): string {
+  // ctx: null — карточка в секции статуса; число — экземпляр в группе года (0 = Давно)
+  var key = g.id + "@" + (ctx === null ? "s" : ctx);
+  var open = key === openId;
+  var ctxs = ctx === null ? "s" : String(ctx);
+
+  if (kind === "tile") {
+    var metaParts: string[] = [];
+    if (g.platform) metaParts.push(esc(g.platform));
+    if (g.genres) metaParts.push(esc(g.genres));
+    if (g.rel) metaParts.push(String(g.rel));
+    var glyph = (g.name.trim()[0] || "?").toUpperCase();
+    return '<div class="card tile win ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + ctxs + '">'
+      + '<span class="cursor">▼</span>'
+      + '<div class="cmain" role="button" tabindex="0" aria-expanded="' + open + '">'
+      + '<div class="cover" style="background:' + coverColor(g.name) + '">' + esc(glyph) + '</div>'
+      + '<div class="cbody">'
+      + '<div class="namerow"><h3 class="name">' + esc(g.name) + '</h3>'
+      + (g.fav ? '<span class="favmark" title="' + t("tab_fav") + '">' + FLAG_SVG + '</span>' : "")
+      + '</div>'
+      + (metaParts.length ? '<div class="cmeta">' + metaParts.join(" · ") + '</div>' : "")
+      + '<div class="cfoot">' + badgeHTML(g, ctx)
+      + (g.time ? '<span class="tp">⏱ ' + fmtTime(g.time) + '</span>' : "")
+      + starsStatic(g)
+      + '</div>'
+      + '</div></div>'
+      + '</div>';
+    // раскрытие тайла живёт ОТДЕЛЬНОЙ полноширинной ячейкой сетки (.dcell),
+    // чтобы сосед по ряду не растягивался — см. section()
+  }
+
+  var rowMetaParts: string[] = [];
+  if (g.platform) rowMetaParts.push(esc(g.platform));
+  if (g.genres) rowMetaParts.push(esc(g.genres.split(",")[0].trim()));
+  if (g.rel) rowMetaParts.push(String(g.rel));
+  // в годовой группе перепрохождения видны прямо в строке
+  var xmult = ctx !== null && cnt(g, +ctx) > 1 ? '<span class="xmult">×' + cnt(g, +ctx) + '</span>' : "";
+  return '<div class="card rowv ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + ctxs + '">'
+    + '<div class="cmain" role="button" tabindex="0" aria-expanded="' + open + '">'
     + '<span class="cursor">▶</span>'
-    + '<div class="row"><span class="name">' + esc(g.name) + '</span>'
+    + '<span class="name">' + esc(g.name) + '</span>'
     + (g.fav ? '<span class="favmark" title="' + t("tab_fav") + '">' + FLAG_SVG + '</span>' : "")
-    + badge + '</div>'
-    + chipsView
-    + metaView
-    + starsView
-    + (open ? '<div class="actions">' + actions + '</div>' : "") + '</div>';
+    + (g.series ? '<button class="micser" data-act="serfilter" title="❖ ' + esc(g.series) + '">❖</button>' : "")
+    + (g.note ? '<span class="micnote">📝</span>' : "")
+    + xmult
+    + csChip(g)
+    + (g.rating ? '<span class="rowstars">' + "★".repeat(g.rating) + '</span>' : "")
+    + (rowMetaParts.length ? '<span class="rowmeta">' + rowMetaParts.join(" · ") + '</span>' : "")
+    + '<span class="chev">' + (open ? "▲" : "▾") + '</span>'
+    + '</div>'
+    + (open ? detailHTML(g, ctx, key) : "")
+    + '</div>';
 }
 
 export function render(): void {
@@ -263,29 +438,55 @@ export function render(): void {
         + '<span class="n">' + runs + '</span>' + runsWord(runs) + '</div>';
     }
   }
-  function section(key: string, title: string | number, items: Game[], ctx: number | null): string {
+  function section(key: string, title: string | number, items: Game[], ctx: number | null, kind: string): string {
     if (!items.length) return "";
     items = sortItems(items);
     var col = !!state.collapsed[key];
     var extra = key === "backlog" ? '<button class="dice" data-dice aria-label="' + t("dice_aria") + '">🎲</button>' : "";
+    var body = "";
+    if (!col) {
+      if (kind === "tile") {
+        // раскрытие тайла — полноширинная ячейка ПОД его рядом: сосед по ряду
+        // не растягивается, окно занимает ширину обеих колонок
+        var ctxs2 = ctx === null ? "s" : String(ctx);
+        var openIdx = -1;
+        items.forEach(function (g, i) { if (g.id + "@" + ctxs2 === openId) openIdx = i; });
+        var cols = typeof matchMedia !== "undefined" && matchMedia("(min-width:640px)").matches ? 2 : 1;
+        var dIdx = openIdx < 0 ? -1
+          : Math.min(openIdx + (cols === 2 && openIdx % 2 === 0 ? 1 : 0), items.length - 1);
+        var inner = "";
+        items.forEach(function (g, i) {
+          inner += cardHTML(g, ctx, "tile");
+          if (i === dIdx && openIdx >= 0) {
+            inner += dcellHTML(items[openIdx], ctx, openId!);
+          }
+        });
+        body = '<div class="cards">' + inner + '</div>';
+      } else {
+        body = '<div class="win panel">'
+          + items.map(function (g) { return cardHTML(g, ctx, kind); }).join("") + '</div>';
+      }
+    }
     return '<section class="sec">'
       + '<div class="yearhead' + (col ? ' col' : '') + '" data-key="' + key
       + '" role="button" tabindex="0" aria-expanded="' + (!col) + '">'
       + '<span class="caret">▾</span><b>' + title + '</b>'
       + '<span class="line"></span>' + extra + '<span class="cnt">' + items.length + '</span></div>'
-      + (col ? "" : items.map(function (g) { return cardHTML(g, ctx); }).join(""))
+      + body
       + '</section>';
   }
+  // «Играю» — всегда карточки-витрина; остальные секции по переключателю вида
+  var restKind = viewMode === "cards" ? "tile" : "rowv";
   var hasAnything = filter === "done" ? bySearch.some(function (g) { return g.years.length > 0; }) : shown.length;
   if (!hasAnything) {
     html = '<div class="empty">' + ((q || noData) ? t("empty_search") : t("empty")) + '</div>';
   } else if (filter === "done" || filter === "all") {
     // группировка: играю → беклог → пройдено по годам → брошено
     if (filter === "all") {
-      html += section("playing", stLabel("playing"), shown.filter(function (g) { return g.status === "playing"; }), null);
-      html += section("backlog", stLabel("backlog"), shown.filter(function (g) { return g.status === "backlog"; }), null);
+      html += section("playing", stLabel("playing"), shown.filter(function (g) { return g.status === "playing"; }), null, "tile");
+      html += section("backlog", stLabel("backlog"), shown.filter(function (g) { return g.status === "backlog"; }), null, restKind);
       // отложенные — «вернусь позже», поэтому рядом с беклогом, а не с брошенными
-      html += section("onhold", stLabel("onhold"), shown.filter(function (g) { return g.status === "onhold"; }), null);
+      html += section("onhold", stLabel("onhold"), shown.filter(function (g) { return g.status === "onhold"; }), null, restKind);
     }
     // годовые группы: по истории прохождений, независимо от текущего статуса
     var years: Record<string, Game[]> = {};
@@ -295,16 +496,17 @@ export function render(): void {
     Object.keys(years)
       .sort(function (a, b) { return (+b) - (+a); })
       .forEach(function (y) {
-        html += section("y" + y, stLabel("done") + " · " + yLabel(y), years[y], +y);
+        html += section("y" + y, stLabel("done") + " · " + yLabel(y), years[y], +y, restKind);
       });
     if (filter === "all") {
-      html += section("dropped", stLabel("dropped"), shown.filter(function (g) { return g.status === "dropped"; }), null);
+      html += section("dropped", stLabel("dropped"), shown.filter(function (g) { return g.status === "dropped"; }), null, restKind);
     }
   } else {
     if (filter === "backlog" && shown.length) {
       html += '<button class="dicebar" data-dice>' + t("dice_bar") + '</button>';
     }
-    html += section(filter, filter === "catalog" ? t("tab_catalog") : (filter === "fav" ? t("tab_fav") : stLabel(filter)), shown, null);
+    var kind = filter === "playing" ? "tile" : restKind;
+    html += section(filter, filter === "catalog" ? t("tab_catalog") : (filter === "fav" ? t("tab_fav") : stLabel(filter)), shown, null, kind);
   }
   document.getElementById("list")!.innerHTML = html;
 
@@ -359,9 +561,35 @@ function patchCardByKey(k: string | null): void {
   if (!g) return;
   var el = document.querySelector('.card[data-id="' + parts[0] + '"][data-ctx="' + parts[1] + '"]');
   if (!el) { render(); return; }
+  var ctx = parts[1] === "s" ? null : +parts[1];
+  if (el.classList.contains("tile")) {
+    // хирургический патч тайла: классы + вставка/удаление .dcell БЕЗ полного
+    // рендера — innerHTML-перерендер сбрасывал content-visibility-высоты
+    // и список уплывал при переключении соседних карточек
+    var open = k === openId;
+    el.classList.toggle("open", open);
+    var cm = el.querySelector(".cmain");
+    if (cm) cm.setAttribute("aria-expanded", String(open));
+    var d = document.querySelector('.dcell[data-id="' + parts[0] + '"][data-ctx="' + parts[1] + '"]');
+    if (open) {
+      if (d) d.innerHTML = detailHTML(g, ctx, k);
+      else insertDcellAfterRow(el, dcellHTML(g, ctx, k));
+    } else if (d) {
+      d.remove();
+    }
+    return;
+  }
   var tmp = document.createElement("div");
-  tmp.innerHTML = cardHTML(g, parts[1] === "s" ? null : +parts[1]);
+  tmp.innerHTML = cardHTML(g, ctx, "rowv");
   el.replaceWith(tmp.firstChild!);
+}
+
+function stopEdit(): string | null {
+  // discard unsaved form state; returns the card key to repaint
+  var k = editKey;
+  editKey = null;
+  editPendingStatus = null;
+  return k;
 }
 
 function syncClearBtn(): void {
@@ -460,7 +688,7 @@ function resolveRef(kind: "plat" | "src", raw: string, prev: string | null): str
 }
 
 function fillSug(input: HTMLInputElement): void {
-  var kind = input.dataset.act;
+  var kind = input.dataset.ed;
   if (kind !== "plat" && kind !== "src" && kind !== "series") return;
   var box = input.parentElement!.querySelector(".sug");
   if (!box) return;
@@ -485,8 +713,11 @@ export function rollDice(pool: Game[]): boolean {
   while (pool.length > 1 && pick.id === lastDice);
   lastDice = pick.id;
   state.collapsed["backlog"] = false;
+  stopEdit();
   openId = pick.id + "@s";
+  animKey = openId;
   render();
+  animKey = null;
   var el = document.querySelector('.card[data-id="' + pick.id + '"][data-ctx="s"]');
   if (el) {
     el.classList.add("chosen");
@@ -503,6 +734,68 @@ export function setDiceHandler(fn: () => void): void {
   diceTapHandler = fn;
 }
 
+// applies the edit form of card `cardEl` to game g; returns false if invalid
+function commitEdit(cardEl: HTMLElement, g: Game, ctx: number | null): boolean {
+  var read = function (name: string): HTMLInputElement | null {
+    return cardEl.querySelector('[data-ed="' + name + '"]') as HTMLInputElement | null;
+  };
+  var nameInp = read("name");
+  if (nameInp) {
+    var nn = nameInp.value.trim();
+    if (nn && norm(nn) !== norm(g.name)) {
+      var clash = state.games.find(function (x) { return x.id !== g.id && norm(x.name) === norm(nn); });
+      if (clash) {
+        toast("«" + clash.name + "» " + t("already") + " (" + stLabel(clash.status) + ")");
+        return false; // остаёмся в форме — имя не принято
+      }
+    }
+    if (nn) g.name = nn;
+  }
+  var platInp = read("plat");
+  if (platInp) g.platform = resolveRef("plat", platInp.value, g.platform || null);
+  var srcInp = read("src");
+  if (srcInp) g.source = resolveRef("src", srcInp.value, g.source || null);
+  var genresInp = read("genres");
+  if (genresInp) g.genres = genresInp.value.trim() || null;
+  var relInp = read("rel");
+  if (relInp) {
+    var rv = parseInt(relInp.value, 10);
+    g.rel = (rv >= 1970 && rv <= 2030) ? rv : null;
+  }
+  var serInp = read("series");
+  if (serInp) g.series = serInp.value.trim() || null;
+  var noteInp = read("note");
+  if (noteInp) g.note = noteInp.value.trim() || null;
+
+  if (ctx === null) {
+    if (editPendingStatus && editPendingStatus !== g.status) g.status = editPendingStatus as any;
+  } else {
+    // счётчик прохождений этого года
+    var cntInp = read("oldcount");
+    if (cntInp) {
+      var v2 = Math.max(1, Math.min(99, parseInt(cntInp.value, 10) || 1));
+      g.counts = g.counts || {};
+      if (v2 > 1) g.counts[+ctx] = v2; else delete g.counts[+ctx];
+    }
+    // перенос прохождения в другой год — вместе со счётчиком
+    var yearSel = read("year");
+    if (yearSel) {
+      var newY = +yearSel.value;
+      if (newY !== +ctx) {
+        g.years = g.years.filter(function (y) { return y !== +ctx; });
+        addYear(g, newY);
+        if (g.counts && g.counts[+ctx]) {
+          var mv = g.counts[+ctx];
+          delete g.counts[+ctx];
+          if (mv > (g.counts[newY] || 1)) g.counts[newY] = mv;
+        }
+        openId = g.id + "@" + newY;
+      }
+    }
+  }
+  return true;
+}
+
 export function wireUI(): void {
   document.getElementById("tabs")!.addEventListener("click", function (e: any) {
     var tb = e.target.closest(".tab");
@@ -517,6 +810,8 @@ export function wireUI(): void {
       return;
     }
     filter = tb.dataset.f;
+    stopEdit();
+    noteEditKey = null;
     openId = null;
     document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("active", x === tb); });
     render();
@@ -553,14 +848,20 @@ export function wireUI(): void {
   document.getElementById("search")!.addEventListener("keydown", function (e: any) {
     if (e.key === "Enter") e.target.blur(); // просто закрыть клавиатуру, поиск уже отработал
   });
+  document.getElementById("viewBtn")!.addEventListener("click", function () {
+    viewMode = viewMode === "list" ? "cards" : "list";
+    try { localStorage.setItem(VIEWKEY, viewMode); } catch (err) {}
+    refreshViewBtn();
+    render();
+  });
 
   var list = document.getElementById("list")!;
   list.addEventListener("focusin", function (e: any) {
-    var a = e.target.dataset && e.target.dataset.act;
+    var a = e.target.dataset && e.target.dataset.ed;
     if (a === "plat" || a === "src" || a === "series") fillSug(e.target);
   });
   list.addEventListener("input", function (e: any) {
-    var a = e.target.dataset && e.target.dataset.act;
+    var a = e.target.dataset && e.target.dataset.ed;
     if (a === "plat" || a === "src" || a === "series") fillSug(e.target);
   });
   list.addEventListener("mousedown", function (e: any) {
@@ -571,15 +872,11 @@ export function wireUI(): void {
   list.addEventListener("click", function (e: any) {
     var b = e.target.closest(".sugbtn");
     if (!b) return;
+    // подсказка только заполняет поле формы; в данные значение попадёт при «Сохранить»
     var input = b.closest(".sugwrap").querySelector("input");
-    var card = b.closest(".card");
-    var g = state.games.find(function (x) { return x.id === +card.dataset.id; });
-    if (!g) return;
-    if (input.dataset.act === "plat") g.platform = b.dataset.sug;
-    else if (input.dataset.act === "series") g.series = b.dataset.sug;
-    else g.source = b.dataset.sug;
-    save();
-    render();
+    input.value = b.dataset.sug;
+    fillSug(input);
+    input.focus();
   });
 
   list.addEventListener("click", function (e: any) {
@@ -602,7 +899,7 @@ export function wireUI(): void {
       }
       return;
     }
-    var card = e.target.closest(".card");
+    var card = e.target.closest(".card,.dcell"); // detail тайла живёт в .dcell рядом с карточкой
     if (!card) return;
     var id = +card.dataset.id;
     var ctxRaw = card.dataset.ctx;
@@ -610,8 +907,7 @@ export function wireUI(): void {
     var key = id + "@" + ctxRaw;
     var g = state.games.find(function (x) { return x.id === id; });
     if (!g) return;
-    var act = e.target.dataset.act;
-    var cy = new Date().getFullYear();
+    var act = e.target.closest("[data-act]") ? e.target.closest("[data-act]").dataset.act : null;
     if (act === "serfilter") {
       query = g.series!;
       (document.getElementById("search") as HTMLInputElement).value = g.series!;
@@ -622,29 +918,128 @@ export function wireUI(): void {
     }
     if (!act) {
       if (e.target.closest("input,select,textarea")) return; // поля ввода не сворачивают карточку
+      if (editKey === key) return; // тап по фону формы не выбрасывает из редактирования
+      var prevEdit = stopEdit(); // редактирование другой карточки — сбросить
       var prev = openId;
       openId = (openId === key ? null : key);
       mergeAsk = null;
-      patchCardByKey(prev);
-      if (openId && openId !== prev) patchCardByKey(openId);
+      armDelKey = null;
+      noteEditKey = null;
+      // якорь скролла — ТА карточка, по которой тапнули: закрытие чужого
+      // раскрытия выше не должно утаскивать список из-под пальца
+      var anchorEl: Element = card;
+      if (card.classList.contains("dcell")) {
+        anchorEl = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]') || card;
+      }
+      var topBefore = anchorEl.getBoundingClientRect().top;
+      var clickedEl: Element | null = card.classList.contains("dcell")
+        ? document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]')
+        : card;
+      var prevEl: Element | null = null;
+      if (prev && prev !== key) {
+        var pq = prev.split("@");
+        prevEl = document.querySelector('.card[data-id="' + pq[0] + '"][data-ctx="' + pq[1] + '"]');
+      }
+      if (openId && prevEl && prevEl.classList.contains("tile")
+        && clickedEl && clickedEl.classList.contains("tile")) {
+        // переключение между раскрытыми тайлами: окно переиспользуется —
+        // контент меняется на месте БЕЗ анимации раскрытия, золотая
+        // обводка переходит к активной карточке
+        prevEl.classList.remove("open");
+        var pcm = prevEl.querySelector(".cmain");
+        if (pcm) pcm.setAttribute("aria-expanded", "false");
+        clickedEl.classList.add("open");
+        var ccm = clickedEl.querySelector(".cmain");
+        if (ccm) ccm.setAttribute("aria-expanded", "true");
+        var dOld = document.querySelector(".dcell") as HTMLElement | null;
+        if (dOld) {
+          dOld.dataset.id = String(id);
+          dOld.dataset.ctx = ctxRaw;
+          // позиция окна: сразу после конца ряда активного тайла
+          var cardsBox2 = clickedEl.parentElement!;
+          var kids2 = Array.prototype.filter.call(cardsBox2.children, function (n: Element) {
+            return n.classList.contains("card");
+          });
+          var idx2 = kids2.indexOf(clickedEl);
+          var cols2 = typeof matchMedia !== "undefined" && matchMedia("(min-width:640px)").matches ? 2 : 1;
+          var endEl = kids2[Math.min(idx2 + (cols2 === 2 && idx2 % 2 === 0 ? 1 : 0), kids2.length - 1)] as Element;
+          if (dOld.previousElementSibling !== endEl) endEl.insertAdjacentElement("afterend", dOld);
+          dOld.innerHTML = detailHTML(g, ctx, key);
+        } else {
+          insertDcellAfterRow(clickedEl, dcellHTML(g, ctx, key));
+        }
+      } else {
+        animKey = openId; // настоящее открытие — единственный случай с анимацией
+        if (prevEdit && prevEdit !== prev) patchCardByKey(prevEdit);
+        patchCardByKey(prev);
+        if (openId && openId !== prev) patchCardByKey(openId);
+        animKey = null;
+      }
+      var after = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]');
+      if (after) window.scrollBy(0, after.getBoundingClientRect().top - topBefore);
+      // открытие у нижнего края: довернуть страницу, чтобы окно раскрытия
+      // было видно, но верх карточки не ушёл под sticky-бар
+      if (after && openId === key) {
+        var dEl: Element | null = after.classList.contains("tile")
+          ? document.querySelector('.dcell[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]')
+          : after;
+        if (dEl) {
+          var over = dEl.getBoundingClientRect().bottom - window.innerHeight + 12;
+          var room = after.getBoundingClientRect().top - 84; // sticky-бар + заголовок ряда
+          var needScroll = Math.min(over, room);
+          if (needScroll > 0) {
+            var smooth = !(typeof matchMedia !== "undefined"
+              && matchMedia("(prefers-reduced-motion: reduce)").matches);
+            window.scrollBy({ top: needScroll, behavior: smooth ? "smooth" : "auto" } as any);
+          }
+        }
+      }
       return;
     }
-    if (act === "status") {
-      var s = e.target.dataset.s;
-      g.status = s;
-      if (s === "done") addYear(g, e.target.dataset.old ? 0 : cy);
-      // историю прохождений при смене статуса НЕ трогаем
-      var anchor2 = siblingCard(card);
-      save();
-      renderKeepScroll(anchor2);
+    if (act === "close") {
+      stopEdit();
+      openId = null;
+      mergeAsk = null;
+      armDelKey = null;
+      noteEditKey = null;
+      patchCardByKey(key);
       return;
     }
-    if (act === "addyear") {
-      addYear(g, cy);
-      if (g.status === "backlog") g.status = "done";
+    if (act === "edit") {
+      editKey = key;
+      editPendingStatus = g.status;
+      armDelKey = null;
+      noteEditKey = null;
+      patchCardByKey(key);
+      return;
+    }
+    if (act === "noteadd") {
+      if (noteEditKey !== key) { // повторный тап не пересоздаёт поле и не стирает текст
+        noteEditKey = key;
+        patchCardByKey(key);
+      }
+      var ta = document.querySelector('textarea[data-act="notequick"]') as HTMLTextAreaElement | null;
+      if (ta) ta.focus();
+      return;
+    }
+    if (act === "canceledit") {
+      stopEdit();
+      patchCardByKey(key);
+      return;
+    }
+    if (act === "saveedit") {
+      if (!commitEdit(card, g, ctx)) return; // невалидное имя — остаёмся в форме
+      stopEdit();
       save();
       render();
-      toast("«" + g.name + "» " + t("added_to") + cy);
+      return;
+    }
+    if (act === "picks") {
+      var pickBtn = e.target.closest(".opt");
+      editPendingStatus = pickBtn.dataset.s;
+      card.querySelectorAll(".opt").forEach(function (o: any) {
+        o.setAttribute("aria-pressed", String(o === pickBtn));
+      });
       return;
     }
     if (act === "rmyear") {
@@ -654,6 +1049,7 @@ export function wireUI(): void {
         g.status = "backlog";
         toast(t("no_runs_left"));
       }
+      stopEdit();
       openId = null;
       save();
       render();
@@ -666,14 +1062,14 @@ export function wireUI(): void {
       return;
     }
     if (act === "rate") {
-      var v = +e.target.dataset.v;
+      var v = +e.target.closest("[data-act]").dataset.v;
       g.rating = (g.rating === v ? null : v);
       save();
       render();
       return;
     }
     if (act === "mergeask") {
-      mergeAsk = { id: g.id, mid: +e.target.dataset.mid };
+      mergeAsk = { id: g.id, mid: +e.target.closest("[data-act]").dataset.mid };
       render();
       return;
     }
@@ -683,7 +1079,7 @@ export function wireUI(): void {
       return;
     }
     if (act === "nomerge") {
-      var oid = +e.target.dataset.mid;
+      var oid = +e.target.closest("[data-act]").dataset.mid;
       var pk = Math.min(g.id, oid) + "-" + Math.max(g.id, oid);
       if (state.noMerge!.indexOf(pk) === -1) state.noMerge!.push(pk);
       mergeAsk = null;
@@ -693,9 +1089,10 @@ export function wireUI(): void {
       return;
     }
     if (act === "mergekeep") {
-      var other = state.games.find(function (x) { return x.id === +e.target.dataset.mid; });
+      var mbtn = e.target.closest("[data-act]");
+      var other = state.games.find(function (x) { return x.id === +mbtn.dataset.mid; });
       if (!other) return;
-      var keep = e.target.dataset.keep === "this" ? g : other;
+      var keep = mbtn.dataset.keep === "this" ? g : other;
       var absorb = keep === g ? other : g;
       // годы и счётчики
       absorb.years.forEach(function (y) { addYear(keep, y); });
@@ -728,91 +1125,111 @@ export function wireUI(): void {
       return;
     }
     if (act === "del") {
-      if (confirm(t("confirm_del").replace("{n}", g.name))) {
+      // двухтапное подтверждение в стиле FF: «Удалить» → «Точно?»
+      if (armDelKey === key) {
+        clearTimeout(armDelTimer);
+        armDelKey = null;
         state.games = state.games.filter(function (x) { return x.id !== id; });
         openId = null;
         save();
         render();
+        return;
       }
+      armDelKey = key;
+      clearTimeout(armDelTimer);
+      armDelTimer = setTimeout(function () {
+        if (armDelKey === key) {
+          armDelKey = null;
+          patchCardByKey(key);
+        }
+      }, 2500);
+      patchCardByKey(key);
       return;
     }
   });
 
   list.addEventListener("keydown", function (e: any) {
+    if (e.key !== "Enter" && e.key !== " ") return;
     var head = e.target.closest ? e.target.closest(".yearhead") : null;
-    if (head && (e.key === "Enter" || e.key === " ")) {
+    if (head) {
       e.preventDefault();
       state.collapsed[head.dataset.key] = !state.collapsed[head.dataset.key];
       save();
       render();
+      return;
+    }
+    var main = e.target.classList && e.target.classList.contains("cmain") ? e.target : null;
+    if (main && e.key === "Enter") {
+      e.preventDefault();
+      main.click(); // раскрытие/сворачивание с клавиатуры
     }
   });
 
+  // быстрые действия со сменой данных: «+ Прошёл в…» и новая заметка по 📝
   list.addEventListener("change", function (e: any) {
     var act = e.target.dataset.act;
-    if (["year", "plat", "src", "oldcount", "addyearsel", "note", "rel", "genres", "series", "rename"].indexOf(act) === -1) return;
-    var card = e.target.closest(".card");
+    if (act === "notequick") {
+      var ncard = e.target.closest(".card,.dcell");
+      var ng = state.games.find(function (x) { return x.id === +ncard.dataset.id; });
+      if (!ng) return;
+      ng.note = e.target.value.trim() || null;
+      noteEditKey = null;
+      save();
+      render();
+      return;
+    }
+    if (act !== "addyearsel") return;
+    var card = e.target.closest(".card,.dcell");
     var g = state.games.find(function (x) { return x.id === +card.dataset.id; });
     if (!g) return;
-    if (act === "rename") {
-      var nn = e.target.value.trim();
-      if (!nn) { render(); return; } // пустое имя — откат
-      var clash = state.games.find(function (x) { return x.id !== g!.id && norm(x.name) === norm(nn); });
-      if (clash) { toast("«" + clash.name + "» " + t("already") + " (" + stLabel(clash.status) + ")"); render(); return; }
-      g.name = nn;
-      save();
-      render();
-    }
-    else if (act === "note") { g.note = e.target.value.trim() || null; save(); render(); }
-    else if (act === "year") {
-      var oldY = card.dataset.ctx === "s" ? null : +card.dataset.ctx;
-      var newY = +e.target.value;
-      if (oldY !== null) {
-        g.years = g.years.filter(function (y) { return y !== oldY; });
-        addYear(g, newY);
-        if (g.counts && g.counts[oldY]) {
-          var mv = g.counts[oldY];
-          delete g.counts[oldY];
-          if (mv > (g.counts[newY] || 1)) g.counts[newY] = mv;
-        }
-        openId = g.id + "@" + newY;
-      }
-      save();
-      render();
-    }
-    else if (act === "oldcount") {
-      var cy2 = +card.dataset.ctx;
-      var v2 = Math.max(1, Math.min(99, parseInt(e.target.value, 10) || 1));
-      g.counts = g.counts || {};
-      if (v2 > 1) g.counts[cy2] = v2; else delete g.counts[cy2];
-      save();
-      render();
-    }
-    else if (act === "addyearsel") {
-      var raw = e.target.value;
-      if (raw) {
-        var v = raw === "old" ? 0 : +raw;
-        addYear(g, v);
-        var pc = card.querySelector('[data-role=precount]');
-        var pcv = pc ? Math.max(1, Math.min(99, parseInt(pc.value, 10) || 1)) : 1;
-        if (pcv > 1) { g.counts = g.counts || {}; g.counts[v] = pcv; }
-        if (g.status === "backlog" || g.status === "playing") g.status = "done";
-        var anchor = siblingCard(card);
-        save();
-        renderKeepScroll(anchor);
-        toast("«" + g.name + "» " + t("added_to") + yLabel(v) + (pcv > 1 ? " ×" + pcv : ""));
-      }
-    }
-    else if (act === "plat") { g.platform = resolveRef("plat", e.target.value, g.platform || null); save(); render(); }
-    else if (act === "rel") { var rv = parseInt(e.target.value, 10); g.rel = (rv >= 1970 && rv <= 2030) ? rv : null; save(); render(); }
-    else if (act === "genres") { g.genres = e.target.value.trim() || null; save(); render(); }
-    else if (act === "series") { g.series = e.target.value.trim() || null; save(); render(); }
-    else { g.source = resolveRef("src", e.target.value, g.source || null); save(); render(); }
+    var raw = e.target.value;
+    if (!raw) return;
+    var v = raw === "old" ? 0 : +raw;
+    addYear(g, v);
+    var pc = card.querySelector('[data-role=precount]');
+    var pcv = pc ? Math.max(1, Math.min(99, parseInt(pc.value, 10) || 1)) : 1;
+    if (pcv > 1) { g.counts = g.counts || {}; g.counts[v] = pcv; }
+    if (g.status === "backlog" || g.status === "playing") g.status = "done";
+    var anchor = siblingCard(card);
+    save();
+    renderKeepScroll(anchor);
+    toast("«" + g.name + "» " + t("added_to") + yLabel(v) + (pcv > 1 ? " ×" + pcv : ""));
   });
+
+  // Esc: сначала выходим из формы, затем закрываем раскрытие;
+  // оверлеи (итоги/кубик/настройки) обрабатывают Esc сами
+  document.addEventListener("keydown", function (e: any) {
+    if (e.key !== "Escape") return;
+    var overlays = ["resultsWin", "settingsWin", "diceWin"];
+    for (var i = 0; i < overlays.length; i++) {
+      var w = document.getElementById(overlays[i]) as any;
+      if (w && !w.hidden) return;
+    }
+    if (editKey) {
+      var k = stopEdit();
+      patchCardByKey(k);
+    } else if (noteEditKey) {
+      var nk = noteEditKey;
+      noteEditKey = null;
+      patchCardByKey(nk);
+    } else if (openId) {
+      var p = openId;
+      openId = null;
+      armDelKey = null;
+      mergeAsk = null;
+      patchCardByKey(p);
+    }
+  });
+
+  // смена числа колонок карточной сетки двигает .dcell — перерисовать
+  try {
+    matchMedia("(min-width:640px)").addEventListener("change", function () { render(); });
+  } catch (e) {}
 
   document.getElementById("sortSel")!.addEventListener("change", function (e: any) {
     sortMode = e.target.value;
     try { localStorage.setItem(SORTKEY, sortMode); } catch (err) {}
+    refreshSortCtl();
     render();
   });
   document.getElementById("resetNoMergeBtn")!.addEventListener("click", function () {
@@ -843,7 +1260,6 @@ export function applyLang(): void {
   document.documentElement.lang = lang;
   document.querySelector("h1")!.textContent = t("title");
   document.title = t("title");
-  document.querySelector(".subtitle")!.textContent = t("subtitle");
   var statSpans = document.querySelectorAll(".stat span");
   statSpans[0].textContent = t("stat_playing");
   statSpans[1].textContent = t("stat_backlog");
@@ -856,8 +1272,14 @@ export function applyLang(): void {
     tb.textContent = f === "catalog" ? t("tab_catalog") : stLabel(f);
   });
   (document.getElementById("search") as HTMLInputElement).placeholder = t("search_ph");
-  document.getElementById("addBtn")!.textContent = t("add_btn");
+  var ab = document.getElementById("addBtn")!;
+  ab.setAttribute("aria-label", t("add_btn")); // внутри — пиксельный «плюс», текст только в подсказке
+  ab.setAttribute("title", t("add_btn"));
+  refreshViewBtn();
+  refreshSortCtl();
+  document.getElementById("sortSel")!.setAttribute("aria-label", t("sort_aria"));
   document.getElementById("gearBtn")!.setAttribute("aria-label", t("settings_aria"));
+  document.getElementById("resultsBtn")!.setAttribute("aria-label", t("res_btn_aria"));
   (document.getElementById("gsUrl") as HTMLInputElement).placeholder = t("ph_gs");
   document.getElementById("orGist")!.textContent = t("or_gist");
   (document.getElementById("ghToken") as HTMLInputElement).placeholder = t("ph_token");

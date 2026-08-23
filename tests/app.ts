@@ -8,7 +8,7 @@ export const L = {
   ru: {
     title: "Журнал игр",
     tabs: ["", "Играю", "Беклог", "Пройдено", "Брошено", "Отложено", "Библиотека", "Избранное"],
-    add: "+ Добавить",
+    add: "Добавить",
     doneLbl: "Пройдено",
     playingLbl: "Играю",
     backlogLbl: "Беклог",
@@ -21,7 +21,7 @@ export const L = {
     merged: "Объединено",
     restored: "Восстановлено из",
     sync: "синк",
-    searchPh: "Поиск по играм…",
+    searchPh: "Поиск",
     resTitle: "Итоги",
     resAll: "Всё время",
     resEmpty: "За этот период прохождений нет",
@@ -42,7 +42,7 @@ export const L = {
   en: {
     title: "Game Log",
     tabs: ["", "Playing", "Backlog", "Beaten", "Dropped", "On hold", "Library", "Favorites"],
-    add: "+ Add",
+    add: "Add",
     doneLbl: "Beaten",
     playingLbl: "Playing",
     backlogLbl: "Backlog",
@@ -55,7 +55,7 @@ export const L = {
     merged: "Merged",
     restored: "Restored from",
     sync: "sync",
-    searchPh: "Search games…",
+    searchPh: "Search",
     resTitle: "Results",
     resAll: "All time",
     resEmpty: "No completions in this period",
@@ -141,6 +141,9 @@ export async function openApp(
   if (opts.beforeGoto) await opts.beforeGoto();
   await page.goto("/");
   await expect(page.locator("h1")).toContainText(meta(testInfo).tr.title);
+  // pixel fonts decode async (font-display:swap); wait them out so late
+  // reflow does not shift layout between Playwright's aim and click
+  await page.evaluate(() => (document as any).fonts.ready.then(() => {}));
 }
 
 // permit console noise that a test deliberately provokes (e.g. mocked network failure)
@@ -163,6 +166,25 @@ export async function openCard(page: Page, name: string, ctx = "s") {
   await card.locator(".name").click();
   await expect(page.locator(".card.open")).toHaveCount(1);
   return page.locator(".card.open");
+}
+
+// redesign: fields are editable only inside the explicit edit mode
+export async function openEdit(page: Page, name: string, ctx = "s") {
+  const card = await openCard(page, name, ctx);
+  const editing = page.locator(".card.open .detail.editing");
+  await card.locator('[data-act="edit"]').click();
+  try {
+    await expect(editing).toBeVisible({ timeout: 3000 });
+  } catch {
+    // под параллельной нагрузкой клик изредка попадает в перестраиваемый узел
+    await page.locator('.card.open [data-act="edit"]').click();
+    await expect(editing).toBeVisible();
+  }
+  return page.locator(".card.open");
+}
+
+export async function saveEdit(page: Page) {
+  await page.locator('.card.open [data-act="saveedit"]').click();
 }
 
 export function toast(page: Page) {

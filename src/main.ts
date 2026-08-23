@@ -1,4 +1,5 @@
 // Entry point: wires modules in the same order the legacy IIFE executed.
+import "./fonts.css";
 import "./styles.css";
 import { initData, onSave, storageOK } from "./data";
 import { t } from "./i18n";

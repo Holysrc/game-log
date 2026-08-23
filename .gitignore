@@ -4,3 +4,4 @@ playwright-report/
 shots/
 dist/
 *.local
+shots-dev/

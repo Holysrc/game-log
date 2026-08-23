@@ -1,22 +1,24 @@
 // «Отложено» (onhold): пятый статус — «прервал, вернусь», в отличие от
 // «Брошено». Аддитивен: старые бэкапы и CSV работают как раньше.
-import { test, expect, openApp, openCard, meta, toast } from "./app";
+import { test, expect, openApp, openEdit, saveEdit, meta, toast } from "./app";
 import { tinyState } from "./fixtures";
 
-test("status button moves a game to «On hold»; tab and section filter it", async ({ page }, ti) => {
+test("status picker moves a game to «On hold»; tab and section filter it", async ({ page }, ti) => {
   const { tr } = meta(ti);
   await openApp(page, ti, tinyState());
-  const card = await openCard(page, "Beta Blade");
-  // кнопки для беклог-игры: Играю · Отложено · Брошено
-  await expect(card.locator(`button[data-act="status"]`)).toHaveCount(3);
-  await card.locator(`button[data-act="status"][data-s="onhold"]`).click();
+  const card = await openEdit(page, "Beta Blade");
+  // выбор статуса в форме: все статусы, кроме «Пройдено» (его задаёт год)
+  await expect(card.locator(".opt")).toHaveCount(4);
+  await card.locator(`.opt[data-s="onhold"]`).click();
+  await saveEdit(page);
   // счётчики шапки: беклог уменьшился, отложенные в тройку не входят
   await expect(page.locator("#stBacklog")).toHaveText("4");
   await expect(page.locator("#stPlaying")).toHaveText("1");
   // секция «Отложено» на «Все» — между беклогом и годами
   const sec = page.locator(".sec", { has: page.locator(`.yearhead[data-key="onhold"]`) });
   await expect(sec.locator(".card", { hasText: "Beta Blade" })).toHaveCount(1);
-  await expect(sec.locator(".badge.onhold")).toContainText(tr.onholdLbl);
+  // карточка осталась раскрытой после сохранения — бейдж статуса в просмотре
+  await expect(page.locator(".card.open .badge.onhold")).toContainText(tr.onholdLbl);
   // вкладка «Отложено»
   await page.locator(`.tab[data-f="onhold"]`).click();
   await expect(page.locator(".card")).toHaveCount(1);
@@ -75,8 +77,9 @@ test("legacy backup without onhold restores cleanly and can adopt the status", a
   await expect(toast(page)).toContainText(tr.restored);
   await expect(page.locator("#stBacklog")).toHaveText("1");
   // и игра из старого файла спокойно получает новый статус
-  const card = await openCard(page, "Legacy One");
-  await card.locator(`button[data-act="status"][data-s="onhold"]`).click();
+  const card = await openEdit(page, "Legacy One");
+  await card.locator(`.opt[data-s="onhold"]`).click();
+  await saveEdit(page);
   await expect(page.locator(`.tab[data-f="onhold"]`)).toBeVisible();
   const st = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("gamelog-v1")!).games.find((g: any) => g.name === "Legacy One").status

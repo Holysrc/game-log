@@ -4,6 +4,8 @@ import { test, openApp, openCard, expect } from "./app";
 import { makeState, tinyState, State } from "./fixtures";
 
 const DIR = "shots";
+// NB: каталог чистится в npm preshots (не здесь: beforeAll идёт в каждом
+// воркере и параллельная чистка стёрла бы кадры соседних проектов)
 
 test.describe("@shots key screens", () => {
   test.beforeAll(async () => {
@@ -23,12 +25,37 @@ test.describe("@shots key screens", () => {
     await page.screenshot({ path: shot(ti, "02-backlog") });
   });
 
-  test("open card actions", async ({ page }, ti) => {
+  test("open card view mode", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
     await openCard(page, "Skyrim Special Edition");
-    // keep the whole action panel in the frame
-    await page.locator(".card.open .actions").scrollIntoViewIfNeeded();
+    // keep the whole detail window in the frame; let the open animation finish
+    await page.locator(".card.open .detail").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
     await page.screenshot({ path: shot(ti, "03-card-open") });
+  });
+
+  test("open card edit mode", async ({ page }, ti) => {
+    await openApp(page, ti, tinyState());
+    const card = await openCard(page, "Skyrim Special Edition");
+    await card.locator('[data-act="edit"]').click();
+    await page.locator(".card.open .detail.editing").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300); // winOpen animation must settle before the frame
+    await page.screenshot({ path: shot(ti, "03b-card-edit") });
+  });
+
+  test("cards view toggle", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(300));
+    await page.locator("#viewBtn").click(); // список → карточки
+    // витрина «Играю» — карточки всегда; доказательство переключателя — беклог тайлами
+    await page.locator('.yearhead[data-key="backlog"]').scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: shot(ti, "11-cards-view") });
+    // раскрытие тайла: окно на всю ширину под рядом
+    const backlogSec = page.locator(".sec", { has: page.locator('.yearhead[data-key="backlog"]') });
+    await backlogSec.locator(".cards .card .name").first().click();
+    await page.locator(".dcell .detail").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: shot(ti, "11b-cards-open") });
   });
 
   test("settings panel", async ({ page }, ti) => {
