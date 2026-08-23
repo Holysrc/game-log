@@ -234,7 +234,8 @@
     .rowv .cmain:hover{background:rgba(var(--gold-rgb),.1)}
     .rowv .cmain:hover .cursor{opacity:1}
   }
-  .rowv.open .cmain{background:rgba(var(--gold-rgb),.08)}
+  .rowv.open .cmain{background:rgba(var(--gold-rgb),.08);
+    box-shadow:inset 0 0 0 1px rgba(var(--gold-rgb),.45)}
   .card .cursor{
     flex:0 0 auto;color:var(--gold);font-family:var(--px);font-size:9px;
     opacity:0;transition:opacity .15s;text-shadow:2px 2px 0 rgba(0,0,0,.6);
@@ -285,6 +286,8 @@
   }
   /* floating tile cursor: only for the OPEN card — an always-on cursor on
      every «playing» tile visually cuts the white window frame */
+  /* раскрытая карточка подсвечена золотым контуром — видно, чьё окно ниже */
+  .tile.open{border-color:var(--gold)}
   .tile>.cursor{position:absolute;top:-11px;left:16px;font-size:12px;opacity:0}
   .tile.playing>.cursor{opacity:0;animation:none}
   .tile.open>.cursor{opacity:1;animation:bob-y .7s steps(2) infinite}
@@ -323,7 +326,7 @@
   /* ---- expanded detail: nested FF sub-window ---- */
   .detail{
     background:linear-gradient(180deg,var(--win-mid),var(--win-bot));
-    border:2px solid var(--border);border-radius:var(--r-win);
+    border:2px solid var(--gold);border-radius:var(--r-win); /* окно раскрытия = выбранное, контур золотой */
     box-shadow:inset 0 0 0 2px rgba(var(--ink1),.85), 0 3px 0 rgba(0,0,0,.35);
     padding:12px 12px 8px;
     transform-origin:50% 0;

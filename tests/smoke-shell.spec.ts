@@ -77,6 +77,10 @@ test("desktop cards: detail opens full-width below the row, neighbor keeps heigh
   expect(dBox.width).toBeGreaterThan(gridBox.width * 0.95);
   const tileBox = (await tiles.nth(0).boundingBox())!;
   expect(dBox.y).toBeGreaterThanOrEqual(tileBox.y + tileBox.height - 2);
+  // раскрытая карточка выделена контуром — отличается от закрытого соседа
+  const openBorder = await tiles.nth(0).evaluate((el) => getComputedStyle(el).borderTopColor);
+  const closedBorder = await tiles.nth(1).evaluate((el) => getComputedStyle(el).borderTopColor);
+  expect(openBorder).not.toBe(closedBorder);
 });
 
 test("theme switching applies Sega Genesis palette and persists", async ({ page }, ti) => {
