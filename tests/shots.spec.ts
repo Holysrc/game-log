@@ -23,12 +23,26 @@ test.describe("@shots key screens", () => {
     await page.screenshot({ path: shot(ti, "02-backlog") });
   });
 
-  test("open card actions", async ({ page }, ti) => {
+  test("open card view mode", async ({ page }, ti) => {
     await openApp(page, ti, tinyState());
     await openCard(page, "Skyrim Special Edition");
-    // keep the whole action panel in the frame
-    await page.locator(".card.open .actions").scrollIntoViewIfNeeded();
+    // keep the whole detail window in the frame
+    await page.locator(".card.open .detail").scrollIntoViewIfNeeded();
     await page.screenshot({ path: shot(ti, "03-card-open") });
+  });
+
+  test("open card edit mode", async ({ page }, ti) => {
+    await openApp(page, ti, tinyState());
+    const card = await openCard(page, "Skyrim Special Edition");
+    await card.locator('[data-act="edit"]').click();
+    await page.locator(".card.open .detail.editing").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: shot(ti, "03b-card-edit") });
+  });
+
+  test("cards view toggle", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(300));
+    await page.locator("#viewBtn").click(); // список → карточки
+    await page.screenshot({ path: shot(ti, "11-cards-view") });
   });
 
   test("settings panel", async ({ page }, ti) => {

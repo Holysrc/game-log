@@ -39,18 +39,20 @@ test("desktop ≥860px uses a wide multi-column layout", async ({ page }, ti) =>
   await openApp(page, ti, tinyState());
   const bodyW = await page.evaluate(() => document.body.getBoundingClientRect().width);
   expect(bodyW, "desktop body must be wider than the 560px phone column").toBeGreaterThan(700);
-  const secDisplay = await page
-    .locator(".sec")
+  // «Играю» — витрина карточек: на десктопе сетка в две колонки
+  const cols = await page
+    .locator(".cards")
     .first()
-    .evaluate((el) => getComputedStyle(el).display);
-  expect(secDisplay).toBe("grid");
+    .evaluate((el) => getComputedStyle(el).gridTemplateColumns.split(" ").length);
+  expect(cols).toBe(2);
 });
 
 test("desktop grid rows have equal card heights", async ({ page }, ti) => {
   test.skip(meta(ti).form !== "desktop", "desktop layout only");
   await openApp(page, ti, tinyState());
   await page.locator(".tab").nth(6).click(); // catalog: cards with very different content
-  const cards = page.locator(".sec .card");
+  await page.locator("#viewBtn").click(); // список → карточки
+  const cards = page.locator(".cards .card");
   const a = await cards.nth(0).boundingBox();
   const b = await cards.nth(1).boundingBox();
   expect(Math.abs(a!.height - b!.height), "side-by-side cards must align").toBeLessThanOrEqual(1);

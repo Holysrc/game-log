@@ -165,6 +165,18 @@ export async function openCard(page: Page, name: string, ctx = "s") {
   return page.locator(".card.open");
 }
 
+// redesign: fields are editable only inside the explicit edit mode
+export async function openEdit(page: Page, name: string, ctx = "s") {
+  const card = await openCard(page, name, ctx);
+  await card.locator('[data-act="edit"]').click();
+  await expect(page.locator(".card.open .detail.editing")).toBeVisible();
+  return page.locator(".card.open");
+}
+
+export async function saveEdit(page: Page) {
+  await page.locator('.card.open [data-act="saveedit"]').click();
+}
+
 export function toast(page: Page) {
   return page.locator("#toast.show");
 }

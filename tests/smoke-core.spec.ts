@@ -1,6 +1,6 @@
 // §9 smoke: tabs/stats, year groups, "+ Beaten in…", stars, notes,
 // suggestions, series chip, favorites, sorts, search/#nodata.
-import { test, expect, openApp, openCard, meta, toast } from "./app";
+import { test, expect, openApp, openCard, openEdit, saveEdit, meta, toast } from "./app";
 import { tinyState } from "./fixtures";
 
 test.describe("tabs & stats", () => {
@@ -32,10 +32,11 @@ test.describe("tabs & stats", () => {
   });
 
   test("status change moves card between sections", async ({ page }, ti) => {
-    const { tr } = meta(ti);
     await openApp(page, ti, tinyState());
-    const card = await openCard(page, "Beta Blade");
-    await card.locator(`button[data-act="status"]`, { hasText: tr.playingLbl }).click();
+    // редизайн: статус меняется в форме «Изменить» → выбор → «Сохранить»
+    const card = await openEdit(page, "Beta Blade");
+    await card.locator(`.opt[data-s="playing"]`).click();
+    await saveEdit(page);
     await expect(page.locator("#stPlaying")).toHaveText("2");
     const playingSec = page.locator(".sec", { has: page.locator(`.yearhead[data-key="playing"]`) });
     await expect(playingSec.locator(".card", { hasText: "Beta Blade" })).toHaveCount(1);
@@ -51,9 +52,9 @@ test.describe("year groups", () => {
     await expect(heads).toHaveCount(9);
     await expect(heads.nth(2)).toContainText(`${tr.doneLbl} · 2024`);
     await expect(heads.nth(7)).toContainText(tr.longAgo);
-    // ×3 replay badge inside long-ago section
+    // ×3 replay marker inside long-ago section (rows show it as a gold ×N)
     const agoSec = page.locator(".sec", { has: page.locator(`.yearhead[data-key="y0"]`) });
-    await expect(agoSec.locator(".badge")).toContainText("×3");
+    await expect(agoSec.locator(".xmult")).toContainText("×3");
     // sticky headers
     const pos = await heads.nth(2).evaluate((el) => getComputedStyle(el).position);
     expect(pos).toBe("sticky");
@@ -71,8 +72,8 @@ test.describe("year groups", () => {
   test("remove year returns game out of the group", async ({ page }, ti) => {
     const { tr } = meta(ti);
     await openApp(page, ti, tinyState());
-    const card = page.locator(`.card[data-ctx="0"]`, { hasText: "Epsilon Echo" });
-    await card.locator(".name").click();
+    // «Убрать из года» живёт в форме редактирования годовой карточки
+    const card = await openEdit(page, "Epsilon Echo", "0");
     await card.locator(`button[data-act="rmyear"]`).click();
     await expect(page.locator(".yearhead", { hasText: tr.longAgo })).toHaveCount(0);
     // still beaten in 2023
@@ -90,9 +91,7 @@ test("«+ Beaten in…» select adds a run with count", async ({ page }, ti) => 
   await card.locator(`select[data-act="addyearsel"]`).selectOption(String(cy));
   await expect(toast(page)).toContainText(`${tr.addedTo} ${cy} ×2`);
   const sec = page.locator(".sec", { has: page.locator(`.yearhead[data-key="y${cy}"]`) });
-  await expect(sec.locator(".card", { hasText: "Beta Blade" }).locator(".badge")).toContainText(
-    `${cy} ×2`
-  );
+  await expect(sec.locator(".card", { hasText: "Beta Blade" }).locator(".xmult")).toContainText("×2");
   await expect(page.locator("#stDone")).toHaveText("6");
 });
 
@@ -122,42 +121,46 @@ test("stars render, community score chip, rating editable", async ({ page }, ti)
   await expect(after.locator(".rate .star.on")).toHaveCount(5);
 });
 
-test("note saved and 📝 chip appears", async ({ page }, ti) => {
+test("note saved and 📝 marker appears", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
-  const card = await openCard(page, "Beta Blade");
-  await card.locator("textarea[data-act='note']").fill("test note here");
-  await card.locator("textarea[data-act='note']").blur();
-  const noteChips = page.locator(`.card`, { hasText: "Beta Blade" }).locator(".plat", { hasText: "📝" });
-  await expect(noteChips.first()).toBeVisible();
+  const card = await openEdit(page, "Beta Blade");
+  await card.locator('textarea[data-ed="note"]').fill("test note here");
+  await saveEdit(page);
+  // строка получает маркер 📝, заметка видна в раскрытии
+  await expect(
+    page.locator(".card", { hasText: "Beta Blade" }).locator(".micnote").first()
+  ).toBeVisible();
+  await expect(page.locator(".card.open .fval", { hasText: "test note here" })).toBeVisible();
 });
 
 test("custom suggestions work by tap for platform, launcher and series", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
-  await openCard(page, "Gamma Grove");
-  // the card must stay open after each suggestion tap
-  const card = page.locator(".card.open");
-  await card.locator(`input[data-act="plat"]`).focus();
+  const card = await openEdit(page, "Gamma Grove");
+  // the form must stay open after each suggestion tap (§9)
+  await card.locator(`input[data-ed="plat"]`).focus();
   await card.locator(".sug .sugbtn", { hasText: /^PC$/ }).first().click();
-  await expect(card.locator(`input[data-act="plat"]`)).toHaveValue("PC");
-  await card.locator(`input[data-act="src"]`).focus();
+  await expect(card.locator(`input[data-ed="plat"]`)).toHaveValue("PC");
+  await card.locator(`input[data-ed="src"]`).focus();
   await card.locator(".sug .sugbtn", { hasText: /^GOG$/ }).first().click();
-  await expect(card.locator(`input[data-act="src"]`)).toHaveValue("GOG");
-  await card.locator(`input[data-act="series"]`).focus();
+  await expect(card.locator(`input[data-ed="src"]`)).toHaveValue("GOG");
+  await card.locator(`input[data-ed="series"]`).focus();
   await card.locator(".sug .sugbtn", { hasText: /^Souls$/ }).first().click();
-  await expect(card.locator(`input[data-act="series"]`)).toHaveValue("Souls");
-  // chips reflect the picks
+  await expect(card.locator(`input[data-ed="series"]`)).toHaveValue("Souls");
+  await expect(page.locator(".card.open .detail.editing")).toBeVisible();
+  // «Сохранить» коммитит выбранное: просмотр и строка отражают значения
+  await saveEdit(page);
+  const open = page.locator(".card.open");
+  await expect(open.locator(".fval", { hasText: /^PC$/ })).toHaveCount(1);
+  await expect(open.locator(".fval", { hasText: /^GOG$/ })).toHaveCount(1);
   await expect(
-    page.locator(".card", { hasText: "Gamma Grove" }).locator(".plat", { hasText: /^PC$/ })
-  ).toHaveCount(1);
-  await expect(
-    page.locator(".card", { hasText: "Gamma Grove" }).locator(".ser", { hasText: /Souls/ })
-  ).toHaveCount(1);
+    page.locator(".card", { hasText: "Gamma Grove" }).locator(".micser")
+  ).toHaveAttribute("title", /Souls/);
 });
 
 test("series chip ❖ filters and shows series summary", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
   const ff = page.locator(".card", { hasText: "Final Fantasy VII" }).first();
-  await ff.locator(".ser").click();
+  await ff.locator(".micser").click();
   await expect(page.locator("#search")).toHaveValue("Final Fantasy");
   const sum = page.locator(".sersum");
   await expect(sum).toBeVisible();

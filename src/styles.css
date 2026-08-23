@@ -263,6 +263,7 @@
   .micnote{flex:0 0 auto;font-size:.72rem;opacity:.9}
   .rowstars{flex:0 0 auto;color:var(--gold);font-size:.62rem;letter-spacing:1px;
     text-shadow:0 1px 2px rgba(0,0,0,.5)}
+  .xmult{flex:0 0 auto;font-family:var(--num);font-size:1rem;line-height:1;color:var(--gold)}
   .rowmeta{flex:0 0 auto;font-size:.72rem;color:var(--text-dim);white-space:nowrap;
     max-width:38%;overflow:hidden;text-overflow:ellipsis}
   .chev{flex:0 0 auto;font-size:9px;color:rgba(var(--border-rgb),.45)}

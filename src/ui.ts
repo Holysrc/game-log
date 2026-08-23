@@ -313,6 +313,8 @@ function cardHTML(g: Game, ctx: number | null, kind: string): string {
   if (g.platform) rowMetaParts.push(esc(g.platform));
   if (g.genres) rowMetaParts.push(esc(g.genres.split(",")[0].trim()));
   if (g.rel) rowMetaParts.push(String(g.rel));
+  // в годовой группе перепрохождения видны прямо в строке
+  var xmult = ctx !== null && cnt(g, +ctx) > 1 ? '<span class="xmult">×' + cnt(g, +ctx) + '</span>' : "";
   return '<div class="card rowv ' + g.status + (open ? " open" : "") + '" data-id="' + g.id + '" data-ctx="' + ctxs + '">'
     + '<div class="cmain" role="button" tabindex="0" aria-expanded="' + open + '">'
     + '<span class="cursor">▶</span>'
@@ -320,6 +322,7 @@ function cardHTML(g: Game, ctx: number | null, kind: string): string {
     + (g.fav ? '<span class="favmark" title="' + t("tab_fav") + '">' + FLAG_SVG + '</span>' : "")
     + (g.series ? '<button class="micser" data-act="serfilter" title="❖ ' + esc(g.series) + '">❖</button>' : "")
     + (g.note ? '<span class="micnote">📝</span>' : "")
+    + xmult
     + csChip(g)
     + (g.rating ? '<span class="rowstars">' + "★".repeat(g.rating) + '</span>' : "")
     + (rowMetaParts.length ? '<span class="rowmeta">' + rowMetaParts.join(" · ") + '</span>' : "")
