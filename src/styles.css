@@ -308,8 +308,8 @@
 
   .badge{
     flex:0 0 auto;display:inline-flex;align-items:center;
-    font-family:var(--px);font-size:7px;letter-spacing:1px;text-transform:uppercase;
-    border:1px solid;border-radius:var(--r-in);padding:5px 8px;white-space:nowrap;
+    font-family:var(--px);font-size:7px;letter-spacing:.5px;text-transform:uppercase;
+    border:1px solid;border-radius:var(--r-in);padding:3px 6px;white-space:nowrap;
   }
   .badge.done{color:var(--green);border-color:rgba(155,226,155,.5);background:rgba(155,226,155,.08)}
   .badge.playing{color:var(--gold);border-color:rgba(var(--gold-rgb),.55);background:rgba(var(--gold-rgb),.1)}
@@ -666,10 +666,10 @@
   .dreset:active{color:var(--gold);opacity:1}
   .dreset:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:var(--r-in)}
 
-  /* ---- ≥640px: two card columns, two detail columns ---- */
+  /* ---- ≥640px: two card columns ---- */
   @media (max-width:639px){
-    .fields{grid-template-columns:1fr}
     .rowmeta{display:none}
+    .fields{gap:10px 12px}
   }
   @media (min-width:640px){
     .cards{grid-template-columns:repeat(2,minmax(0,1fr))}
