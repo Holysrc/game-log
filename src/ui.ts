@@ -293,7 +293,8 @@ function editFormHTML(g: Game, ctx: number | null): string {
     + '<span class="sugwrap"><input class="input" data-ed="src" value="'
     + (g.source ? esc(g.source) : "") + '"><div class="sug"></div></span></div>';
   d += '<div class="field"><span class="flabel">' + t("genres_ph") + '</span>'
-    + '<input class="input" data-ed="genres" value="' + (g.genres ? esc(g.genres) : "") + '"></div>';
+    + '<span class="sugwrap"><input class="input" data-ed="genres" value="'
+    + (g.genres ? esc(g.genres) : "") + '"><div class="sug"></div></span></div>';
   d += '<div class="field"><span class="flabel">' + t("rel_ph") + '</span>'
     + '<input class="input relinput" data-ed="rel" type="number" min="1970" max="2030" value="' + (g.rel || "") + '"></div>';
   d += '<div class="field"><span class="flabel">' + t("series_ph") + '</span>'
@@ -409,19 +410,6 @@ export function render(): void {
     return filter === "all" || filter === "catalog" || g.status === filter;
   });
 
-  // платформы и лончеры для подсказок: стандартные + те, что уже введены
-  var plats: Record<string, 1> = {}, srcs: Record<string, 1> = {};
-  COMMON_PLATFORMS.forEach(function (p) { plats[p] = 1; });
-  COMMON_SOURCES.forEach(function (s) { srcs[s] = 1; });
-  state.games.forEach(function (g) {
-    if (g.platform) plats[g.platform] = 1;
-    if (g.source) srcs[g.source] = 1;
-  });
-  document.getElementById("platformList")!.innerHTML =
-    Object.keys(plats).map(function (p) { return '<option value="' + esc(p) + '">'; }).join("");
-  document.getElementById("sourceList")!.innerHTML =
-    Object.keys(srcs).map(function (s) { return '<option value="' + esc(s) + '">'; }).join("");
-
   var html = "";
   // сводка серии: если запрос совпадает с названием серии
   if (q && !noData) {
@@ -508,16 +496,22 @@ export function render(): void {
     var kind = filter === "playing" ? "tile" : restKind;
     html += section(filter, filter === "catalog" ? t("tab_catalog") : (filter === "fav" ? t("tab_fav") : stLabel(filter)), shown, null, kind);
   }
-  document.getElementById("list")!.innerHTML = html;
+  var listEl = document.getElementById("list")!;
+  listEl.innerHTML = html;
+  // epoch: full-rebuild counter, lets tests assert partial updates stay partial
+  listEl.dataset.epoch = String((+(listEl.dataset.epoch || "0")) + 1);
 
-  // «no Playnite data» chip: visible only while such games exist
-  var chip = document.getElementById("nodataChip");
-  if (chip) {
-    var nd = state.games.filter(function (g) { return !g.source && !g.genres && !g.cs; }).length;
-    (chip as any).hidden = !nd;
-    if (nd) chip.textContent = "⚠ " + t("nodata_chip") + " · " + nd;
-  }
+  updateNodataChip();
   (window as any).__lastRenderMs = performance.now() - t0; // perf budget probe (§7)
+}
+
+// «no Playnite data» chip: visible only while such games exist
+function updateNodataChip(): void {
+  var chip = document.getElementById("nodataChip");
+  if (!chip) return;
+  var nd = state.games.filter(function (g) { return !g.source && !g.genres && !g.cs; }).length;
+  (chip as any).hidden = !nd;
+  if (nd) chip.textContent = "⚠ " + t("nodata_chip") + " · " + nd;
 }
 
 /* ================= helpers ================= */
@@ -584,6 +578,32 @@ function patchCardByKey(k: string | null): void {
   el.replaceWith(tmp.firstChild!);
 }
 
+// точечное обновление всех экземпляров карточки игры (секция статуса +
+// годовые группы) — полный render() на 1500 играх стоит сотни мс на телефоне
+function patchGame(g: Game): void {
+  var els = document.querySelectorAll('.card[data-id="' + g.id + '"]');
+  if (!els.length) { render(); return; }
+  els.forEach(function (el) {
+    if (!el.isConnected) return;
+    var ctxRaw = (el as HTMLElement).dataset.ctx!;
+    var ctx = ctxRaw === "s" ? null : +ctxRaw;
+    var kind = el.classList.contains("tile") ? "tile" : "rowv";
+    var tmp = document.createElement("div");
+    tmp.innerHTML = cardHTML(g, ctx, kind);
+    el.replaceWith(tmp.firstChild!);
+  });
+  // открытое окно тайла живёт отдельной ячейкой сетки — обновить содержимое
+  var d = document.querySelector('.dcell[data-id="' + g.id + '"]') as HTMLElement | null;
+  if (d) {
+    var dctx = d.dataset.ctx === "s" ? null : +d.dataset.ctx!;
+    d.innerHTML = detailHTML(g, dctx, g.id + "@" + d.dataset.ctx);
+  }
+}
+
+function noDataQuery(): boolean {
+  return query.trim().toLowerCase() === "#nodata";
+}
+
 function stopEdit(): string | null {
   // discard unsaved form state; returns the card key to repaint
   var k = editKey;
@@ -635,6 +655,17 @@ function sugValues(kind: string): string[] {
   var set: Record<string, 1> = {};
   if (kind === "plat") COMMON_PLATFORMS.forEach(function (v) { set[v] = 1; });
   if (kind === "src") COMMON_SOURCES.forEach(function (v) { set[v] = 1; });
+  if (kind === "genres") {
+    // жанры — список через запятую: справочник состоит из отдельных значений
+    var seen: Record<string, string> = {};
+    state.games.forEach(function (g) {
+      (g.genres || "").split(",").forEach(function (tok) {
+        var v = normSpace(tok);
+        if (v && !seen[v.toLowerCase()]) seen[v.toLowerCase()] = v;
+      });
+    });
+    return Object.keys(seen).map(function (k) { return seen[k]; });
+  }
   state.games.forEach(function (g) {
     var v = kind === "plat" ? g.platform : (kind === "src" ? g.source : g.series);
     if (v) set[v] = 1;
@@ -666,7 +697,10 @@ function levenshtein(a: string, b: string): number {
 
 // нормализовать ввод и свести к каноническому написанию из справочника;
 // новое значение заводится только после подтверждения, отказ => prev
-function resolveRef(kind: "plat" | "src", raw: string, prev: string | null): string | null {
+var REF_NEW_KEY: Record<string, string> = {
+  plat: "ref_new_plat", src: "ref_new_src", series: "ref_new_series", genres: "ref_new_genre"
+};
+function resolveRef(kind: "plat" | "src" | "series" | "genres", raw: string, prev: string | null): string | null {
   var val = normSpace(raw);
   if (!val) return null;
   var values = sugValues(kind);
@@ -683,18 +717,27 @@ function resolveRef(kind: "plat" | "src", raw: string, prev: string | null): str
   if (best && bestD <= limit) {
     if (confirm(t("ref_similar").replace("{v}", best))) return best;
   }
-  if (confirm(t(kind === "plat" ? "ref_new_plat" : "ref_new_src").replace("{v}", val))) return val;
+  if (confirm(t(REF_NEW_KEY[kind]).replace("{v}", val))) return val;
   return prev; // отказ от создания — откат к прежнему значению
 }
 
 function fillSug(input: HTMLInputElement): void {
   var kind = input.dataset.ed;
-  if (kind !== "plat" && kind !== "src" && kind !== "series") return;
+  if (kind !== "plat" && kind !== "src" && kind !== "series" && kind !== "genres") return;
   var box = input.parentElement!.querySelector(".sug");
   if (!box) return;
-  var q = input.value.trim().toLowerCase();
+  var q: string, chosen: Record<string, 1> = {};
+  if (kind === "genres") {
+    // фильтруем по последнему (недописанному) жанру; уже выбранные не предлагаем
+    var parts = input.value.split(",");
+    q = normSpace(parts.pop() || "").toLowerCase();
+    parts.forEach(function (p) { var pv = normSpace(p); if (pv) chosen[pv.toLowerCase()] = 1; });
+  } else {
+    q = input.value.trim().toLowerCase();
+  }
   var vals = sugValues(kind).filter(function (v) {
-    return v.toLowerCase() !== q && (!q || v.toLowerCase().indexOf(q) !== -1);
+    var lv = v.toLowerCase();
+    return lv !== q && !chosen[lv] && (!q || lv.indexOf(q) !== -1);
   }).slice(0, 12);
   box.innerHTML = vals.map(function (v) {
     return '<button type="button" class="sugbtn" data-sug="' + esc(v) + '">' + esc(v) + '</button>';
@@ -734,8 +777,10 @@ export function setDiceHandler(fn: () => void): void {
   diceTapHandler = fn;
 }
 
-// applies the edit form of card `cardEl` to game g; returns false if invalid
-function commitEdit(cardEl: HTMLElement, g: Game, ctx: number | null): boolean {
+// applies the edit form of card `cardEl` to game g;
+// returns null if invalid, else whether the list grouping changed
+function commitEdit(cardEl: HTMLElement, g: Game, ctx: number | null): { regroup: boolean } | null {
+  var regroup = false;
   var read = function (name: string): HTMLInputElement | null {
     return cardEl.querySelector('[data-ed="' + name + '"]') as HTMLInputElement | null;
   };
@@ -746,7 +791,7 @@ function commitEdit(cardEl: HTMLElement, g: Game, ctx: number | null): boolean {
       var clash = state.games.find(function (x) { return x.id !== g.id && norm(x.name) === norm(nn); });
       if (clash) {
         toast("«" + clash.name + "» " + t("already") + " (" + stLabel(clash.status) + ")");
-        return false; // остаёмся в форме — имя не принято
+        return null; // остаёмся в форме — имя не принято
       }
     }
     if (nn) g.name = nn;
@@ -756,19 +801,30 @@ function commitEdit(cardEl: HTMLElement, g: Game, ctx: number | null): boolean {
   var srcInp = read("src");
   if (srcInp) g.source = resolveRef("src", srcInp.value, g.source || null);
   var genresInp = read("genres");
-  if (genresInp) g.genres = genresInp.value.trim() || null;
+  if (genresInp) {
+    // каждый жанр через запятую канонизируется отдельно; отказ = убрать его
+    var toks: string[] = [], seenG: Record<string, 1> = {};
+    genresInp.value.split(",").forEach(function (tk: string) {
+      var rv2 = resolveRef("genres", tk, null);
+      if (rv2 && !seenG[rv2.toLowerCase()]) { seenG[rv2.toLowerCase()] = 1; toks.push(rv2); }
+    });
+    g.genres = toks.length ? toks.join(", ") : null;
+  }
   var relInp = read("rel");
   if (relInp) {
     var rv = parseInt(relInp.value, 10);
     g.rel = (rv >= 1970 && rv <= 2030) ? rv : null;
   }
   var serInp = read("series");
-  if (serInp) g.series = serInp.value.trim() || null;
+  if (serInp) g.series = resolveRef("series", serInp.value, g.series || null);
   var noteInp = read("note");
   if (noteInp) g.note = noteInp.value.trim() || null;
 
   if (ctx === null) {
-    if (editPendingStatus && editPendingStatus !== g.status) g.status = editPendingStatus as any;
+    if (editPendingStatus && editPendingStatus !== g.status) {
+      g.status = editPendingStatus as any;
+      regroup = true; // карточка меняет секцию
+    }
   } else {
     // счётчик прохождений этого года
     var cntInp = read("oldcount");
@@ -790,10 +846,11 @@ function commitEdit(cardEl: HTMLElement, g: Game, ctx: number | null): boolean {
           if (mv > (g.counts[newY] || 1)) g.counts[newY] = mv;
         }
         openId = g.id + "@" + newY;
+        regroup = true; // карточка переезжает в другую годовую группу
       }
     }
   }
-  return true;
+  return { regroup: regroup };
 }
 
 export function wireUI(): void {
@@ -858,11 +915,11 @@ export function wireUI(): void {
   var list = document.getElementById("list")!;
   list.addEventListener("focusin", function (e: any) {
     var a = e.target.dataset && e.target.dataset.ed;
-    if (a === "plat" || a === "src" || a === "series") fillSug(e.target);
+    if (a === "plat" || a === "src" || a === "series" || a === "genres") fillSug(e.target);
   });
   list.addEventListener("input", function (e: any) {
     var a = e.target.dataset && e.target.dataset.ed;
-    if (a === "plat" || a === "src" || a === "series") fillSug(e.target);
+    if (a === "plat" || a === "src" || a === "series" || a === "genres") fillSug(e.target);
   });
   list.addEventListener("mousedown", function (e: any) {
     var b = e.target.closest(".sugbtn");
@@ -874,7 +931,19 @@ export function wireUI(): void {
     if (!b) return;
     // подсказка только заполняет поле формы; в данные значение попадёт при «Сохранить»
     var input = b.closest(".sugwrap").querySelector("input");
-    input.value = b.dataset.sug;
+    if (input.dataset.ed === "genres") {
+      // выбор добавляется к списку; последний кусок ввода — это фильтр, его заменяем
+      var parts = input.value.split(",");
+      parts.pop();
+      var toks: string[] = [], seen: Record<string, 1> = {};
+      parts.concat([b.dataset.sug]).forEach(function (p: string) {
+        var v = p.replace(/\s+/g, " ").trim();
+        if (v && !seen[v.toLowerCase()]) { seen[v.toLowerCase()] = 1; toks.push(v); }
+      });
+      input.value = toks.join(", ");
+    } else {
+      input.value = b.dataset.sug;
+    }
     fillSug(input);
     input.focus();
   });
@@ -1028,10 +1097,13 @@ export function wireUI(): void {
       return;
     }
     if (act === "saveedit") {
-      if (!commitEdit(card, g, ctx)) return; // невалидное имя — остаёмся в форме
+      var res = commitEdit(card, g, ctx);
+      if (!res) return; // невалидное имя — остаёмся в форме
       stopEdit();
       save();
-      render();
+      // перф: без смены группировки/сортировки/поиска хватает точечного патча
+      if (res.regroup || sortMode !== "default" || query.trim() || noDataQuery()) render();
+      else { patchGame(g); updateNodataChip(); }
       return;
     }
     if (act === "picks") {
@@ -1058,14 +1130,16 @@ export function wireUI(): void {
     if (act === "fav") {
       g.fav = !g.fav;
       save();
-      render();
+      // на вкладке избранного карточка должна исчезнуть — там нужен полный рендер
+      if (filter === "fav") render(); else patchGame(g);
       return;
     }
     if (act === "rate") {
       var v = +e.target.closest("[data-act]").dataset.v;
       g.rating = (g.rating === v ? null : v);
       save();
-      render();
+      // под сортировкой по моей оценке меняется порядок — нужен полный рендер
+      if (sortMode === "rating") render(); else patchGame(g);
       return;
     }
     if (act === "mergeask") {
@@ -1170,16 +1244,18 @@ export function wireUI(): void {
     var act = e.target.dataset.act;
     if (act === "notequick") {
       var ncard = e.target.closest(".card,.dcell");
+      if (!ncard) return; // узел мог быть отсоединён точечным патчем
       var ng = state.games.find(function (x) { return x.id === +ncard.dataset.id; });
       if (!ng) return;
       ng.note = e.target.value.trim() || null;
       noteEditKey = null;
       save();
-      render();
+      patchGame(ng);
       return;
     }
     if (act !== "addyearsel") return;
     var card = e.target.closest(".card,.dcell");
+    if (!card) return;
     var g = state.games.find(function (x) { return x.id === +card.dataset.id; });
     if (!g) return;
     var raw = e.target.value;

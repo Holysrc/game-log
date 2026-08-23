@@ -168,23 +168,30 @@ export async function openCard(page: Page, name: string, ctx = "s") {
   return page.locator(".card.open");
 }
 
-// redesign: fields are editable only inside the explicit edit mode
+// redesign: fields are editable only inside the explicit edit mode.
+// Раскрытие строки живёт внутри .card.open, раскрытие тайла — в соседней
+// ячейке .dcell; хелперы работают с обоими контейнерами.
+export function openDetail(page: Page) {
+  return page.locator(".card.open:has(.detail), .dcell").first();
+}
+
 export async function openEdit(page: Page, name: string, ctx = "s") {
-  const card = await openCard(page, name, ctx);
-  const editing = page.locator(".card.open .detail.editing");
-  await card.locator('[data-act="edit"]').click();
+  await openCard(page, name, ctx);
+  const editBtn = page.locator('.card.open [data-act="edit"], .dcell [data-act="edit"]').first();
+  const editing = page.locator(".card.open .detail.editing, .dcell .detail.editing");
+  await editBtn.click();
   try {
     await expect(editing).toBeVisible({ timeout: 3000 });
   } catch {
     // под параллельной нагрузкой клик изредка попадает в перестраиваемый узел
-    await page.locator('.card.open [data-act="edit"]').click();
+    await editBtn.click();
     await expect(editing).toBeVisible();
   }
-  return page.locator(".card.open");
+  return openDetail(page);
 }
 
 export async function saveEdit(page: Page) {
-  await page.locator('.card.open [data-act="saveedit"]').click();
+  await page.locator('.card.open [data-act="saveedit"], .dcell [data-act="saveedit"]').first().click();
 }
 
 export function toast(page: Page) {

@@ -102,3 +102,90 @@ test("declining the typo suggestion falls through to the new-value dialog", asyn
   await expect(fval(page, /^Xbox Seriz$/)).toHaveCount(1);
   expect(dialogs).toHaveLength(2);
 });
+
+/* ---- серия: тот же справочник, что у платформ/лончеров ----
+   (редизайн: значение правится в форме «Изменить», справочник — на «Сохранить») */
+
+test("series: case-insensitive match canonicalizes silently", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => true);
+  const card = await openEdit(page, "Gamma Grove");
+  await card.locator(`input[data-ed="series"]`).fill("final fantasy");
+  await saveEdit(page);
+  await expect(fval(page, /^Final Fantasy$/)).toHaveCount(1);
+  expect(await storedField(page, "Gamma Grove", "series")).toBe("Final Fantasy");
+  expect(dialogs, "canonical series match must not ask").toEqual([]);
+});
+
+test("series: a typo suggests the closest existing series", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, (msg) => msg.includes("Final Fantasy"));
+  const card = await openEdit(page, "Gamma Grove");
+  await card.locator(`input[data-ed="series"]`).fill("Final Fantsy");
+  await saveEdit(page);
+  await expect(fval(page, /^Final Fantasy$/)).toHaveCount(1);
+  expect(dialogs).toHaveLength(1);
+});
+
+test("series: a genuinely new series asks and rolls back on decline", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => false);
+  const card = await openEdit(page, "Dark Souls"); // series: Souls
+  await card.locator(`input[data-ed="series"]`).fill("Metroid");
+  await saveEdit(page);
+  await expect(fval(page, /^Souls$/)).toHaveCount(1);
+  expect(await storedField(page, "Dark Souls", "series")).toBe("Souls");
+  expect(dialogs).toHaveLength(1);
+  expect(dialogs[0]).toContain("Metroid");
+});
+
+/* ---- жанры: справочник по каждому значению из списка через запятую ---- */
+
+test("genres: tokens canonicalize case-insensitively without dialogs", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => true);
+  const card = await openEdit(page, "Gamma Grove");
+  await card.locator(`input[data-ed="genres"]`).fill("rpg,  horror");
+  await saveEdit(page);
+  await expect(fval(page, /^RPG, Horror$/)).toHaveCount(1);
+  expect(await storedField(page, "Gamma Grove", "genres")).toBe("RPG, Horror");
+  expect(dialogs, "existing genres must not ask").toEqual([]);
+});
+
+test("genres: a typo in a token suggests the existing genre", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, (msg) => msg.includes("Racing"));
+  const card = await openEdit(page, "Gamma Grove");
+  await card.locator(`input[data-ed="genres"]`).fill("Racin");
+  await saveEdit(page);
+  await expect(fval(page, /^Racing$/)).toHaveCount(1);
+  expect(dialogs).toHaveLength(1);
+});
+
+test("genres: declining a new token drops it, the rest survive", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => false);
+  const card = await openEdit(page, "Gamma Grove");
+  await card.locator(`input[data-ed="genres"]`).fill("rpg, Weirdcore");
+  await saveEdit(page);
+  await expect(fval(page, /^RPG$/)).toHaveCount(1);
+  expect(await storedField(page, "Gamma Grove", "genres")).toBe("RPG");
+  expect(dialogs).toHaveLength(1); // спрашивали только про Weirdcore
+  expect(dialogs[0]).toContain("Weirdcore");
+});
+
+test("genres: suggestion tap appends to the list", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  trackDialogs(page, () => true);
+  const card = await openEdit(page, "Alpha Quest"); // genres: RPG, Action
+  const gen = card.locator(`input[data-ed="genres"]`);
+  await gen.click();
+  await gen.fill("RPG, Action, Rac");
+  const sug = card.locator(`.sugwrap:has(input[data-ed="genres"]) .sugbtn`, { hasText: "Racing" });
+  await expect(sug).toBeVisible();
+  await sug.click();
+  // подсказка добавилась к списку в поле; в данные попадёт при «Сохранить»
+  await expect(card.locator(`input[data-ed="genres"]`)).toHaveValue("RPG, Action, Racing");
+  await saveEdit(page);
+  expect(await storedField(page, "Alpha Quest", "genres")).toBe("RPG, Action, Racing");
+});
