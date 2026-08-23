@@ -107,7 +107,7 @@
   .tab{
     flex:0 0 auto;border:1px solid rgba(var(--border-rgb),.3);border-radius:var(--r-in);
     background:rgba(var(--ink2),.55);color:var(--text-dim);
-    padding:8px 10px;cursor:pointer;min-height:44px;
+    padding:12px 10px;cursor:pointer;min-height:44px;
     font-family:var(--px);font-size:8px;letter-spacing:1px;text-transform:uppercase;
   }
   .tab[data-f="all"]{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px}
@@ -126,7 +126,7 @@
   .bar.mainbar{
     position:sticky;top:0;z-index:7;
     background:var(--bg);
-    padding:8px 0;margin:0 0 4px;
+    padding:8px 0;margin:0; /* без нижнего margin: щель между sticky-слоями просвечивала контент */
   }
   .search{
     flex:1;display:flex;align-items:center;gap:8px;
@@ -266,7 +266,8 @@
   .xmult{flex:0 0 auto;font-family:var(--num);font-size:1rem;line-height:1;color:var(--gold)}
   .rowmeta{flex:0 0 auto;font-size:.72rem;color:var(--text-dim);white-space:nowrap;
     max-width:38%;overflow:hidden;text-overflow:ellipsis}
-  .chev{flex:0 0 auto;font-size:9px;color:rgba(var(--border-rgb),.45)}
+  .chev{flex:0 0 auto;font-size:11px;color:rgba(var(--border-rgb),.6)}
+  @media (hover:hover){.rowv .cmain:hover .chev{color:var(--gold)}}
   .rowv.open .chev{color:var(--gold)}
   .cs{
     flex:0 0 auto;display:inline-block;padding:0 5px;border-radius:var(--r-in);
@@ -282,10 +283,12 @@
     padding:12px;cursor:pointer;user-select:none;
     content-visibility:auto;contain-intrinsic-size:auto 108px;
   }
+  /* floating tile cursor: only for the OPEN card — an always-on cursor on
+     every «playing» tile visually cuts the white window frame */
   .tile>.cursor{position:absolute;top:-11px;left:16px;font-size:12px;opacity:0}
-  .tile.playing>.cursor{opacity:1;animation:blink 1.1s steps(2) infinite}
+  .tile.playing>.cursor{opacity:0;animation:none}
   .tile.open>.cursor{opacity:1;animation:bob-y .7s steps(2) infinite}
-  @media (prefers-reduced-motion:reduce){.tile.playing>.cursor,.tile.open>.cursor{animation:none}}
+  @media (prefers-reduced-motion:reduce){.tile.open>.cursor{animation:none}}
   .tile .cmain{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:center}
   .cover{
     width:56px;aspect-ratio:3/4;border-radius:var(--r-in);
@@ -347,11 +350,12 @@
   .fval{font-size:.82rem;line-height:1.4;overflow-wrap:anywhere;min-width:0}
   .fval.num{font-family:var(--num);font-size:1.2rem;line-height:1;font-variant-numeric:tabular-nums}
   .fval .unit{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    font-size:.72rem;color:var(--text-dim)}
+    font-size:.85em;color:var(--text-dim)}
   .fval .cs{margin-left:8px;vertical-align:2px}
   .prewrap{white-space:pre-wrap}
   .field{min-width:0}
-  .unit{font-size:.72rem;color:var(--text-dim)}
+  .unit{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-size:.85em;color:var(--text-dim)}
   .rate{display:flex;gap:2px;margin:-8px 0}
   .rate .star{
     border:none;background:none;cursor:pointer;padding:10px 8px;
@@ -479,7 +483,8 @@
   .bakrow .btn{flex:0 0 auto}
   /* labelled setting rows: Язык / Тема */
   .setrow{display:flex;align-items:center;gap:8px}
-  .setrow .setlabel{flex:0 0 24%;color:var(--text-dim);font-size:.85rem;letter-spacing:.02em}
+  .setrow .setlabel{flex:0 0 24%;color:var(--text-dim);
+    font-family:var(--px);font-size:7px;letter-spacing:1px;text-transform:uppercase}
   .setrow select{flex:1;width:auto;min-width:0}
   /* sync spoiler + info */
   .sprow{display:flex;align-items:center;gap:4px}
@@ -535,7 +540,8 @@
   .rchip{
     border:1px solid rgba(var(--border-rgb),.3);border-radius:var(--r-in);
     background:rgba(var(--ink2),.55);color:var(--text-dim);
-    padding:8px 14px;font-size:.83rem;cursor:pointer;
+    padding:12px 10px;cursor:pointer;
+    font-family:var(--px);font-size:8px;letter-spacing:1px;text-transform:uppercase;
     font-variant-numeric:tabular-nums;
     min-height:44px; /* tap target on touch screens */
   }
@@ -579,10 +585,10 @@
   /* dynamics: pure-CSS column chart «beaten per year» */
   .rchartwrap{position:relative;margin-top:8px}
   .rchartwrap::before,.rchartwrap::after{
-    content:"";position:absolute;top:0;bottom:0;width:16px;pointer-events:none;z-index:1;
+    content:"";position:absolute;top:0;bottom:0;width:12px;pointer-events:none;z-index:1;
   }
-  .rchartwrap::before{left:0;background:linear-gradient(90deg,rgba(var(--fade),.85),transparent)}
-  .rchartwrap::after{right:0;background:linear-gradient(270deg,rgba(var(--fade),.85),transparent)}
+  .rchartwrap::before{left:0;background:linear-gradient(90deg,rgba(var(--fade),.6),transparent)}
+  .rchartwrap::after{right:0;background:linear-gradient(270deg,rgba(var(--fade),.6),transparent)}
   .rchartwrap.at-start::before{display:none}
   .rchartwrap.at-end::after{display:none}
   .rchart{display:flex;align-items:flex-end;gap:4px;padding:4px 8px 0;overflow-x:auto;
@@ -618,7 +624,8 @@
   .dtitle{font-size:11px}
   .dform{display:grid;gap:8px;margin-top:16px}
   .dfield{display:flex;align-items:center;gap:8px;min-height:44px}
-  .dfield span{flex:0 0 42%;color:var(--text-dim);font-size:.85rem;letter-spacing:.02em}
+  .dfield span{flex:0 0 42%;color:var(--text-dim);
+    font-family:var(--px);font-size:7px;letter-spacing:1px;text-transform:uppercase;line-height:1.6}
   .dfield select{
     flex:1;min-width:0;min-height:44px;background:rgba(var(--ink1),.7);
     border:1px solid rgba(var(--border-rgb),.4);

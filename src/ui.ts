@@ -188,7 +188,8 @@ function detailViewHTML(g: Game, ctx: number | null, key: string): string {
       + '<div class="fval num">' + fmtTime(g.time) + '</div></div>';
   }
   d += fieldHTML(t("series_ph"), g.series ? esc(g.series) : "—");
-  // rating: interactive stars stay a one-tap quick action (core test)
+  // rating: interactive stars stay a one-tap quick action (core test);
+  // community score lives under its own label — it is not the user's rating
   if (g.status === "done" || g.status === "dropped" || g.years.length) {
     var rateH = '<div class="rate" role="group">';
     for (var r = 1; r <= 5; r++) {
@@ -197,9 +198,10 @@ function detailViewHTML(g: Game, ctx: number | null, key: string): string {
     }
     rateH += '</div>';
     d += '<div class="field"><span class="flabel">' + t("lbl_rating") + '</span>'
-      + '<div class="fval" style="display:flex;align-items:center;gap:8px">' + rateH + csChip(g) + '</div></div>';
-  } else if (g.cs) {
-    d += '<div class="field"><span class="flabel">' + t("lbl_rating") + '</span>'
+      + '<div class="fval">' + rateH + '</div></div>';
+  }
+  if (g.cs) {
+    d += '<div class="field"><span class="flabel">' + t("lbl_cs") + '</span>'
       + '<div class="fval">' + csChip(g) + '</div></div>';
   }
   if (g.note) {
@@ -757,7 +759,8 @@ export function wireUI(): void {
   document.getElementById("viewBtn")!.addEventListener("click", function (e: any) {
     viewMode = viewMode === "list" ? "cards" : "list";
     try { localStorage.setItem(VIEWKEY, viewMode); } catch (err) {}
-    e.target.textContent = t(viewMode === "cards" ? "view_cards" : "view_list");
+    // подпись — целевой режим: кнопка говорит, что произойдёт по тапу
+    e.target.textContent = t(viewMode === "cards" ? "view_list" : "view_cards");
     render();
   });
 
@@ -1081,7 +1084,8 @@ export function applyLang(): void {
   (document.getElementById("search") as HTMLInputElement).placeholder = t("search_ph");
   document.getElementById("addBtn")!.textContent = t("add_btn");
   var vb = document.getElementById("viewBtn")!;
-  vb.textContent = t(viewMode === "cards" ? "view_cards" : "view_list");
+  // подпись — целевой режим (что будет по тапу), не текущий
+  vb.textContent = t(viewMode === "cards" ? "view_list" : "view_cards");
   vb.setAttribute("aria-label", t("view_aria"));
   document.getElementById("gearBtn")!.setAttribute("aria-label", t("settings_aria"));
   document.getElementById("resultsBtn")!.setAttribute("aria-label", t("res_btn_aria"));

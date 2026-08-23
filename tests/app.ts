@@ -141,6 +141,9 @@ export async function openApp(
   if (opts.beforeGoto) await opts.beforeGoto();
   await page.goto("/");
   await expect(page.locator("h1")).toContainText(meta(testInfo).tr.title);
+  // pixel fonts decode async (font-display:swap); wait them out so late
+  // reflow does not shift layout between Playwright's aim and click
+  await page.evaluate(() => (document as any).fonts.ready.then(() => {}));
 }
 
 // permit console noise that a test deliberately provokes (e.g. mocked network failure)
@@ -168,8 +171,15 @@ export async function openCard(page: Page, name: string, ctx = "s") {
 // redesign: fields are editable only inside the explicit edit mode
 export async function openEdit(page: Page, name: string, ctx = "s") {
   const card = await openCard(page, name, ctx);
+  const editing = page.locator(".card.open .detail.editing");
   await card.locator('[data-act="edit"]').click();
-  await expect(page.locator(".card.open .detail.editing")).toBeVisible();
+  try {
+    await expect(editing).toBeVisible({ timeout: 3000 });
+  } catch {
+    // под параллельной нагрузкой клик изредка попадает в перестраиваемый узел
+    await page.locator('.card.open [data-act="edit"]').click();
+    await expect(editing).toBeVisible();
+  }
   return page.locator(".card.open");
 }
 

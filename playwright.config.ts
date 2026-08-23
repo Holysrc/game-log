@@ -16,7 +16,11 @@ export default defineConfig({
     baseURL: `http://localhost:${port}/`,
     trace: "retain-on-failure",
     // SW would bypass page.route mocks; the offline spec re-enables it
-    serviceWorkers: "block"
+    serviceWorkers: "block",
+    // дискретная FF-анимация раскрытия (steps) читается Playwright как
+    // «стабильный» элемент между шагами — клики промахиваются; в тестах
+    // анимации выключены через prefers-reduced-motion (CSS его уважает)
+    contextOptions: { reducedMotion: "reduce" }
   },
   webServer: {
     command: "node tests/server.mjs",
