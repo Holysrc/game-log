@@ -289,6 +289,24 @@ function detailHTML(g: Game, ctx: number | null, key: string): string {
   return editKey === key ? editFormHTML(g, ctx) : detailViewHTML(g, ctx, key);
 }
 
+function dcellHTML(g: Game, ctx: number | null, key: string): string {
+  var ctxs = ctx === null ? "s" : String(ctx);
+  return '<div class="dcell" data-id="' + g.id + '" data-ctx="' + ctxs + '">'
+    + detailHTML(g, ctx, key) + '</div>';
+}
+
+// вставить .dcell после КОНЦА РЯДА тайла: в 2 колонки — после соседа справа
+function insertDcellAfterRow(tileEl: Element, html: string): void {
+  var cardsBox = tileEl.parentElement!;
+  var kids = Array.prototype.filter.call(cardsBox.children, function (n: Element) {
+    return n.classList.contains("card");
+  });
+  var idx = kids.indexOf(tileEl);
+  var cols = typeof matchMedia !== "undefined" && matchMedia("(min-width:640px)").matches ? 2 : 1;
+  var end = Math.min(idx + (cols === 2 && idx % 2 === 0 ? 1 : 0), kids.length - 1);
+  (kids[end] as Element).insertAdjacentHTML("afterend", html);
+}
+
 /* ---- list row / card tile ---- */
 function cardHTML(g: Game, ctx: number | null, kind: string): string {
   // ctx: null — карточка в секции статуса; число — экземпляр в группе года (0 = Давно)
@@ -415,9 +433,7 @@ export function render(): void {
         items.forEach(function (g, i) {
           inner += cardHTML(g, ctx, "tile");
           if (i === dIdx && openIdx >= 0) {
-            var og = items[openIdx];
-            inner += '<div class="dcell" data-id="' + og.id + '" data-ctx="' + ctxs2 + '">'
-              + detailHTML(og, ctx, openId!) + '</div>';
+            inner += dcellHTML(items[openIdx], ctx, openId!);
           }
         });
         body = '<div class="cards">' + inner + '</div>';
@@ -520,13 +536,26 @@ function patchCardByKey(k: string | null): void {
   if (!g) return;
   var el = document.querySelector('.card[data-id="' + parts[0] + '"][data-ctx="' + parts[1] + '"]');
   if (!el) { render(); return; }
+  var ctx = parts[1] === "s" ? null : +parts[1];
   if (el.classList.contains("tile")) {
-    // detail тайла — сосед по сетке, точечный патч не воспроизведёт раскладку
-    renderKeepScroll(el);
+    // хирургический патч тайла: классы + вставка/удаление .dcell БЕЗ полного
+    // рендера — innerHTML-перерендер сбрасывал content-visibility-высоты
+    // и список уплывал при переключении соседних карточек
+    var open = k === openId;
+    el.classList.toggle("open", open);
+    var cm = el.querySelector(".cmain");
+    if (cm) cm.setAttribute("aria-expanded", String(open));
+    var d = document.querySelector('.dcell[data-id="' + parts[0] + '"][data-ctx="' + parts[1] + '"]');
+    if (open) {
+      if (d) d.innerHTML = detailHTML(g, ctx, k);
+      else insertDcellAfterRow(el, dcellHTML(g, ctx, k));
+    } else if (d) {
+      d.remove();
+    }
     return;
   }
   var tmp = document.createElement("div");
-  tmp.innerHTML = cardHTML(g, parts[1] === "s" ? null : +parts[1], "rowv");
+  tmp.innerHTML = cardHTML(g, ctx, "rowv");
   el.replaceWith(tmp.firstChild!);
 }
 
@@ -870,9 +899,18 @@ export function wireUI(): void {
       mergeAsk = null;
       armDelKey = null;
       noteEditKey = null;
+      // якорь скролла — ТА карточка, по которой тапнули: закрытие чужого
+      // раскрытия выше не должно утаскивать список из-под пальца
+      var anchorEl: Element = card;
+      if (card.classList.contains("dcell")) {
+        anchorEl = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]') || card;
+      }
+      var topBefore = anchorEl.getBoundingClientRect().top;
       if (prevEdit && prevEdit !== prev) patchCardByKey(prevEdit);
       patchCardByKey(prev);
       if (openId && openId !== prev) patchCardByKey(openId);
+      var after = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]');
+      if (after) window.scrollBy(0, after.getBoundingClientRect().top - topBefore);
       return;
     }
     if (act === "close") {

@@ -1,7 +1,7 @@
 // §9 smoke: tabs/stats, year groups, "+ Beaten in…", stars, notes,
 // suggestions, series chip, favorites, sorts, search/#nodata.
 import { test, expect, openApp, openCard, openEdit, saveEdit, meta, toast } from "./app";
-import { tinyState } from "./fixtures";
+import { tinyState, makeState } from "./fixtures";
 
 test.describe("tabs & stats", () => {
   test("header stats and status tabs filter cards", async ({ page }, ti) => {
@@ -226,6 +226,40 @@ test.describe("search", () => {
     await openApp(page, ti, tinyState());
     await page.locator("#search").fill("Qqqqqzzz");
     await expect(page.locator(".empty")).toBeVisible();
+  });
+});
+
+test.describe("toggling neighbors keeps the tapped card in place", () => {
+  // закрытие чужого раскрытия не должно утаскивать список из-под пальца
+  async function assertStablePos(page: any, cards: any, to: number) {
+    await cards.nth(0).locator(".name").click();
+    await page.waitForTimeout(120);
+    await cards.nth(to).scrollIntoViewIfNeeded();
+    const before = (await cards.nth(to).boundingBox())!.y;
+    await cards.nth(to).locator(".name").click();
+    await page.waitForTimeout(120);
+    const after = (await cards.nth(to).boundingBox())!.y;
+    expect(Math.abs(after - before), "tapped card must not drift").toBeLessThanOrEqual(2);
+  }
+
+  test("list view: neighbor below", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(120));
+    const sec = page.locator(".sec", { has: page.locator('.yearhead[data-key="backlog"]') });
+    await assertStablePos(page, sec.locator(".panel > .card"), 2);
+  });
+
+  test("cards view: side neighbor (same row)", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(120));
+    await page.locator("#viewBtn").click();
+    const sec = page.locator(".sec", { has: page.locator('.yearhead[data-key="backlog"]') });
+    await assertStablePos(page, sec.locator(".cards > .card"), 1);
+  });
+
+  test("cards view: neighbor in the next row", async ({ page }, ti) => {
+    await openApp(page, ti, makeState(120));
+    await page.locator("#viewBtn").click();
+    const sec = page.locator(".sec", { has: page.locator('.yearhead[data-key="backlog"]') });
+    await assertStablePos(page, sec.locator(".cards > .card"), 2);
   });
 });
 
