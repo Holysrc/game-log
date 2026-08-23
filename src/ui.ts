@@ -42,6 +42,29 @@ export var FLAG_SVG = '<svg class="flagicon" viewBox="2334 4108 3832 2785" width
   + '</svg>';
 
 
+// toolbar view-toggle icons (currentColor, theme-aware)
+var ICON_LIST = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">'
+  + '<rect x="3" y="5" width="18" height="2.6" rx="1"/><rect x="3" y="10.7" width="18" height="2.6" rx="1"/>'
+  + '<rect x="3" y="16.4" width="18" height="2.6" rx="1"/></svg>';
+var ICON_GRID = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">'
+  + '<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/>'
+  + '<rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>';
+
+// кнопка вида: иконка ЦЕЛЕВОГО режима (что будет по тапу)
+function refreshViewBtn(): void {
+  var vb = document.getElementById("viewBtn")!;
+  var target = viewMode === "cards" ? "view_list" : "view_cards";
+  vb.innerHTML = viewMode === "cards" ? ICON_LIST : ICON_GRID;
+  vb.setAttribute("aria-label", t("view_aria"));
+  vb.setAttribute("title", t(target));
+}
+
+// кнопка сортировки подсвечена, пока активна не «Без сортировки»
+function refreshSortCtl(): void {
+  var c = document.getElementById("sortCtl");
+  if (c) c.classList.toggle("on", sortMode !== "default");
+}
+
 function counts() {
   var c: any = { playing: 0, backlog: 0, done: 0, dropped: 0, onhold: 0 };
   state.games.forEach(function (g) { c[g.status]++; });
@@ -825,11 +848,10 @@ export function wireUI(): void {
   document.getElementById("search")!.addEventListener("keydown", function (e: any) {
     if (e.key === "Enter") e.target.blur(); // просто закрыть клавиатуру, поиск уже отработал
   });
-  document.getElementById("viewBtn")!.addEventListener("click", function (e: any) {
+  document.getElementById("viewBtn")!.addEventListener("click", function () {
     viewMode = viewMode === "list" ? "cards" : "list";
     try { localStorage.setItem(VIEWKEY, viewMode); } catch (err) {}
-    // подпись — целевой режим: кнопка говорит, что произойдёт по тапу
-    e.target.textContent = t(viewMode === "cards" ? "view_list" : "view_cards");
+    refreshViewBtn();
     render();
   });
 
@@ -1169,6 +1191,7 @@ export function wireUI(): void {
   document.getElementById("sortSel")!.addEventListener("change", function (e: any) {
     sortMode = e.target.value;
     try { localStorage.setItem(SORTKEY, sortMode); } catch (err) {}
+    refreshSortCtl();
     render();
   });
   document.getElementById("resetNoMergeBtn")!.addEventListener("click", function () {
@@ -1212,10 +1235,9 @@ export function applyLang(): void {
   });
   (document.getElementById("search") as HTMLInputElement).placeholder = t("search_ph");
   document.getElementById("addBtn")!.textContent = t("add_btn");
-  var vb = document.getElementById("viewBtn")!;
-  // подпись — целевой режим (что будет по тапу), не текущий
-  vb.textContent = t(viewMode === "cards" ? "view_list" : "view_cards");
-  vb.setAttribute("aria-label", t("view_aria"));
+  refreshViewBtn();
+  refreshSortCtl();
+  document.getElementById("sortSel")!.setAttribute("aria-label", t("sort_aria"));
   document.getElementById("gearBtn")!.setAttribute("aria-label", t("settings_aria"));
   document.getElementById("resultsBtn")!.setAttribute("aria-label", t("res_btn_aria"));
   (document.getElementById("gsUrl") as HTMLInputElement).placeholder = t("ph_gs");

@@ -43,11 +43,14 @@
     <span class="scursor">▶</span>
     <input id="search" type="search" placeholder="Поиск" autocomplete="off">
     <button id="clearSearch" aria-label="Очистить" hidden>✕</button>
+    <button class="addbtn" id="addBtn">Добавить</button>
   </div>
-  <button class="btn gold" id="addBtn">+ Добавить</button>
+  <div class="ctl sortctl" id="sortCtl">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><path d="M8 4l4 5H9.5v11h-3V9H4l4-5z"/><path d="M16 20l-4-5h2.5V4h3v11H20l-4 5z"/></svg>
+    <select id="sortSel" aria-label="Сортировка"></select>
+  </div>
+  <button class="ctl" id="viewBtn"></button>
 </div>
-
-<div class="bar sortrow"><select id="sortSel"></select><button class="btn" id="viewBtn"></button></div>
 
 <main id="list"></main>
 

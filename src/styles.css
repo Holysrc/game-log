@@ -141,9 +141,31 @@
   .search input::placeholder{font-family:var(--px);font-size:8px;letter-spacing:1px;color:var(--placeholder)}
   #clearSearch{
     flex:0 0 auto;border:none;background:none;color:var(--text-dim);cursor:pointer;
-    font-size:1rem;padding:8px 12px;line-height:1;min-height:44px;min-width:44px;
+    font-size:1rem;padding:8px;line-height:1;min-height:44px;min-width:40px;
   }
   #clearSearch:active{color:var(--gold)}
+  /* «Добавить» живёт прямо в окне поиска, рядом с крестиком */
+  .addbtn{
+    flex:0 0 auto;border:1px solid rgba(var(--gold-rgb),.6);border-radius:var(--r-in);
+    background:rgba(var(--ink1),.4);color:var(--gold);cursor:pointer;
+    font-family:var(--px);font-size:8px;letter-spacing:1px;text-transform:uppercase;
+    padding:10px 8px;margin-right:2px;
+  }
+  .addbtn:active{transform:translateY(1px)}
+  .addbtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  /* квадратные кнопки-иконки в строке поиска: сортировка и вид */
+  .ctl{
+    position:relative;flex:0 0 auto;width:52px;height:52px;
+    display:grid;place-content:center;padding:0;
+    border:1px solid rgba(var(--border-rgb),.3);border-radius:var(--r-in);
+    background:rgba(var(--ink2),.4);color:var(--text-dim);cursor:pointer;
+  }
+  .ctl:active{color:var(--gold);transform:translateY(1px)}
+  .ctl:focus-visible,.ctl:focus-within{outline:2px solid var(--gold);outline-offset:2px}
+  .ctl svg{display:block}
+  .ctl.on{border-color:rgba(var(--gold-rgb),.6);color:var(--gold)}
+  /* невидимый нативный select поверх кнопки: тап открывает системный список */
+  .sortctl select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0}
   /* прячем нативный крестик, чтобы не задвоился */
   #search::-webkit-search-cancel-button{display:none}
 
@@ -157,14 +179,6 @@
   .btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   .btn.gold{border-color:rgba(var(--gold-rgb),.6);color:var(--gold)}
   .btn.del{border-color:var(--danger);color:var(--danger)}
-  .sortrow{margin:-2px 0 8px}
-  .sortrow select{
-    flex:1;min-width:0;background:rgba(var(--ink1),.55);border:1px solid rgba(var(--border-rgb),.3);
-    border-radius:var(--r-in);
-    color:var(--text-dim);padding:8px 12px;font-size:.82rem;min-height:44px;
-  }
-  .sortrow select:focus{outline:none;border-color:var(--gold)}
-  .sortrow #viewBtn{flex:0 0 auto}
 
   /* ---- section heads ---- */
   .sec{margin-top:8px}
@@ -688,7 +702,7 @@
   @media (min-width:860px){
     body{max-width:1024px;}
     h1{font-size:20px}
-    .tab,.btn,.dice,.dicebar,#clearSearch,.sortrow select,
+    .tab,.btn,.dice,.dicebar,#clearSearch,
     .detail select,.input,.yearhead,.cmd,.iconbtn{min-height:0}
     /* .search keeps 52px: .yearhead sticky top is tuned to the 68px mainbar */
     .dice{min-width:0;padding:4px 8px}
