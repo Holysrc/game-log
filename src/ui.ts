@@ -932,11 +932,49 @@ export function wireUI(): void {
         anchorEl = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]') || card;
       }
       var topBefore = anchorEl.getBoundingClientRect().top;
-      animKey = openId; // настоящее открытие — единственный случай с анимацией
-      if (prevEdit && prevEdit !== prev) patchCardByKey(prevEdit);
-      patchCardByKey(prev);
-      if (openId && openId !== prev) patchCardByKey(openId);
-      animKey = null;
+      var clickedEl: Element | null = card.classList.contains("dcell")
+        ? document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]')
+        : card;
+      var prevEl: Element | null = null;
+      if (prev && prev !== key) {
+        var pq = prev.split("@");
+        prevEl = document.querySelector('.card[data-id="' + pq[0] + '"][data-ctx="' + pq[1] + '"]');
+      }
+      if (openId && prevEl && prevEl.classList.contains("tile")
+        && clickedEl && clickedEl.classList.contains("tile")) {
+        // переключение между раскрытыми тайлами: окно переиспользуется —
+        // контент меняется на месте БЕЗ анимации раскрытия, золотая
+        // обводка переходит к активной карточке
+        prevEl.classList.remove("open");
+        var pcm = prevEl.querySelector(".cmain");
+        if (pcm) pcm.setAttribute("aria-expanded", "false");
+        clickedEl.classList.add("open");
+        var ccm = clickedEl.querySelector(".cmain");
+        if (ccm) ccm.setAttribute("aria-expanded", "true");
+        var dOld = document.querySelector(".dcell") as HTMLElement | null;
+        if (dOld) {
+          dOld.dataset.id = String(id);
+          dOld.dataset.ctx = ctxRaw;
+          // позиция окна: сразу после конца ряда активного тайла
+          var cardsBox2 = clickedEl.parentElement!;
+          var kids2 = Array.prototype.filter.call(cardsBox2.children, function (n: Element) {
+            return n.classList.contains("card");
+          });
+          var idx2 = kids2.indexOf(clickedEl);
+          var cols2 = typeof matchMedia !== "undefined" && matchMedia("(min-width:640px)").matches ? 2 : 1;
+          var endEl = kids2[Math.min(idx2 + (cols2 === 2 && idx2 % 2 === 0 ? 1 : 0), kids2.length - 1)] as Element;
+          if (dOld.previousElementSibling !== endEl) endEl.insertAdjacentElement("afterend", dOld);
+          dOld.innerHTML = detailHTML(g, ctx, key);
+        } else {
+          insertDcellAfterRow(clickedEl, dcellHTML(g, ctx, key));
+        }
+      } else {
+        animKey = openId; // настоящее открытие — единственный случай с анимацией
+        if (prevEdit && prevEdit !== prev) patchCardByKey(prevEdit);
+        patchCardByKey(prev);
+        if (openId && openId !== prev) patchCardByKey(openId);
+        animKey = null;
+      }
       var after = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]');
       if (after) window.scrollBy(0, after.getBoundingClientRect().top - topBefore);
       // открытие у нижнего края: довернуть страницу, чтобы окно раскрытия

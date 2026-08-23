@@ -272,6 +272,23 @@ test.describe("toggling neighbors keeps the tapped card in place", () => {
   });
 });
 
+test("switching between open tiles swaps the window content without re-animating", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  await page.locator(".tab").nth(6).click(); // catalog
+  await page.locator("#viewBtn").click(); // карточки
+  const tiles = page.locator(".cards > .card");
+  await tiles.nth(0).locator(".name").click();
+  await expect(page.locator(".dcell .detail")).toHaveClass(/anim/); // первое открытие — с анимацией
+  await tiles.nth(1).locator(".name").click();
+  // окно переиспользовано: контент второй карточки, без повторной анимации
+  const name1 = (await tiles.nth(1).locator(".name").textContent())!;
+  await expect(page.locator(".dcell .dname")).toHaveText(name1);
+  await expect(page.locator(".dcell .detail")).not.toHaveClass(/anim/);
+  // золотая обводка перешла к активной
+  await expect(tiles.nth(1)).toHaveClass(/open/);
+  await expect(tiles.nth(0)).not.toHaveClass(/open/);
+});
+
 test("opening a card at the bottom edge reveals its detail window", async ({ page }, ti) => {
   await openApp(page, ti, makeState(120));
   await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
