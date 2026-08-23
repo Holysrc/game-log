@@ -1234,7 +1234,9 @@ export function applyLang(): void {
     tb.textContent = f === "catalog" ? t("tab_catalog") : stLabel(f);
   });
   (document.getElementById("search") as HTMLInputElement).placeholder = t("search_ph");
-  document.getElementById("addBtn")!.textContent = t("add_btn");
+  var ab = document.getElementById("addBtn")!;
+  ab.setAttribute("aria-label", t("add_btn")); // внутри — пиксельный «плюс», текст только в подсказке
+  ab.setAttribute("title", t("add_btn"));
   refreshViewBtn();
   refreshSortCtl();
   document.getElementById("sortSel")!.setAttribute("aria-label", t("sort_aria"));

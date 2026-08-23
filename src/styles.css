@@ -144,13 +144,14 @@
     font-size:1rem;padding:8px;line-height:1;min-height:44px;min-width:40px;
   }
   #clearSearch:active{color:var(--gold)}
-  /* «Добавить» живёт прямо в окне поиска, рядом с крестиком */
+  /* «Добавить» живёт прямо в окне поиска: пиксельный плюс рядом с крестиком */
   .addbtn{
-    flex:0 0 auto;border:1px solid rgba(var(--gold-rgb),.6);border-radius:var(--r-in);
+    flex:0 0 auto;width:40px;height:40px;display:grid;place-content:center;
+    border:1px solid rgba(var(--gold-rgb),.6);border-radius:var(--r-in);
     background:rgba(var(--ink1),.4);color:var(--gold);cursor:pointer;
-    font-family:var(--px);font-size:8px;letter-spacing:1px;text-transform:uppercase;
-    padding:10px 8px;margin-right:2px;
+    padding:0;margin-right:2px;
   }
+  .addbtn svg{display:block}
   .addbtn:active{transform:translateY(1px)}
   .addbtn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   /* квадратные кнопки-иконки в строке поиска: сортировка и вид */

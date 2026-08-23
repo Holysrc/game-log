@@ -8,7 +8,7 @@ test("all visible chrome is translated", async ({ page }, ti) => {
   await expect(page.locator("h1")).toHaveText(tr.title);
   const tabs = page.locator(".tab");
   for (let i = 0; i < tr.tabs.length; i++) await expect(tabs.nth(i)).toHaveText(tr.tabs[i]);
-  await expect(page.locator("#addBtn")).toHaveText(tr.add);
+  await expect(page.locator("#addBtn")).toHaveAttribute("aria-label", tr.add); // кнопка-иконка «+»
   await expect(page.locator("#search")).toHaveAttribute("placeholder", tr.searchPh);
 
   // switching language re-renders everything
