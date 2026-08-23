@@ -94,3 +94,88 @@ test("declining the typo suggestion falls through to the new-value dialog", asyn
   await expect(page.locator(`.card.open input[data-act="plat"]`)).toHaveValue("Xbox Seriz");
   expect(dialogs).toHaveLength(2);
 });
+
+/* ---- серия: тот же справочник, что у платформ/лончеров ---- */
+
+test("series: case-insensitive match canonicalizes silently", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => true);
+  const card = await openCard(page, "Gamma Grove");
+  const ser = card.locator(`input[data-act="series"]`);
+  await ser.fill("final fantasy");
+  await ser.blur();
+  await expect(page.locator(`.card.open input[data-act="series"]`)).toHaveValue("Final Fantasy");
+  expect(dialogs, "canonical series match must not ask").toEqual([]);
+});
+
+test("series: a typo suggests the closest existing series", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, (msg) => msg.includes("Final Fantasy"));
+  const card = await openCard(page, "Gamma Grove");
+  const ser = card.locator(`input[data-act="series"]`);
+  await ser.fill("Final Fantsy");
+  await ser.blur();
+  await expect(page.locator(`.card.open input[data-act="series"]`)).toHaveValue("Final Fantasy");
+  expect(dialogs).toHaveLength(1);
+});
+
+test("series: a genuinely new series asks and rolls back on decline", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => false);
+  const card = await openCard(page, "Dark Souls"); // series: Souls
+  const ser = card.locator(`input[data-act="series"]`);
+  await ser.fill("Metroid");
+  await ser.blur();
+  await expect(page.locator(`.card.open input[data-act="series"]`)).toHaveValue("Souls");
+  expect(dialogs).toHaveLength(1);
+  expect(dialogs[0]).toContain("Metroid");
+});
+
+/* ---- жанры: справочник по каждому значению из списка через запятую ---- */
+
+test("genres: tokens canonicalize case-insensitively without dialogs", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => true);
+  const card = await openCard(page, "Gamma Grove");
+  const gen = card.locator(`input[data-act="genres"]`);
+  await gen.fill("rpg,  horror");
+  await gen.blur();
+  await expect(page.locator(`.card.open input[data-act="genres"]`)).toHaveValue("RPG, Horror");
+  expect(dialogs, "existing genres must not ask").toEqual([]);
+});
+
+test("genres: a typo in a token suggests the existing genre", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, (msg) => msg.includes("Racing"));
+  const card = await openCard(page, "Gamma Grove");
+  const gen = card.locator(`input[data-act="genres"]`);
+  await gen.fill("Racin");
+  await gen.blur();
+  await expect(page.locator(`.card.open input[data-act="genres"]`)).toHaveValue("Racing");
+  expect(dialogs).toHaveLength(1);
+});
+
+test("genres: declining a new token drops it, the rest survive", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const dialogs = trackDialogs(page, () => false);
+  const card = await openCard(page, "Gamma Grove");
+  const gen = card.locator(`input[data-act="genres"]`);
+  await gen.fill("rpg, Weirdcore");
+  await gen.blur();
+  await expect(page.locator(`.card.open input[data-act="genres"]`)).toHaveValue("RPG");
+  expect(dialogs).toHaveLength(1); // спрашивали только про Weirdcore
+  expect(dialogs[0]).toContain("Weirdcore");
+});
+
+test("genres: suggestion tap appends to the list", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  trackDialogs(page, () => true);
+  const card = await openCard(page, "Alpha Quest"); // genres: RPG, Action
+  const gen = card.locator(`input[data-act="genres"]`);
+  await gen.click();
+  await gen.fill("RPG, Action, Rac");
+  const sug = card.locator(`.sugwrap:has(input[data-act="genres"]) .sugbtn`, { hasText: "Racing" });
+  await expect(sug).toBeVisible();
+  await sug.click();
+  await expect(page.locator(`.card.open input[data-act="genres"]`)).toHaveValue("RPG, Action, Racing");
+});

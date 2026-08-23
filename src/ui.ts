@@ -112,8 +112,8 @@ function cardHTML(g: Game, ctx: number | null): string {
       + 'value="' + (g.source ? esc(g.source) : "") + '"><div class="sug"></div></span>';
     actions += '<input class="platinput oldcnt" data-act="rel" type="number" min="1970" max="2030" placeholder="' + t("rel_ph") + '" '
       + 'value="' + (g.rel || "") + '" style="width:110px">';
-    actions += '<input class="platinput" data-act="genres" placeholder="' + t("genres_ph") + '" '
-      + 'value="' + (g.genres ? esc(g.genres) : "") + '" style="width:160px">';
+    actions += '<span class="sugwrap"><input class="platinput" data-act="genres" placeholder="' + t("genres_ph") + '" '
+      + 'value="' + (g.genres ? esc(g.genres) : "") + '" style="width:160px"><div class="sug"></div></span>';
     actions += '<span class="sugwrap"><input class="platinput" data-act="series" placeholder="' + t("series_ph") + '" '
       + 'value="' + (g.series ? esc(g.series) : "") + '" style="width:150px"><div class="sug"></div></span>';
     if (g.status === "done" || g.status === "dropped" || g.years.length) {
@@ -407,6 +407,17 @@ function sugValues(kind: string): string[] {
   var set: Record<string, 1> = {};
   if (kind === "plat") COMMON_PLATFORMS.forEach(function (v) { set[v] = 1; });
   if (kind === "src") COMMON_SOURCES.forEach(function (v) { set[v] = 1; });
+  if (kind === "genres") {
+    // жанры — список через запятую: справочник состоит из отдельных значений
+    var seen: Record<string, string> = {};
+    state.games.forEach(function (g) {
+      (g.genres || "").split(",").forEach(function (tok) {
+        var v = normSpace(tok);
+        if (v && !seen[v.toLowerCase()]) seen[v.toLowerCase()] = v;
+      });
+    });
+    return Object.keys(seen).map(function (k) { return seen[k]; });
+  }
   state.games.forEach(function (g) {
     var v = kind === "plat" ? g.platform : (kind === "src" ? g.source : g.series);
     if (v) set[v] = 1;
@@ -438,7 +449,8 @@ function levenshtein(a: string, b: string): number {
 
 // нормализовать ввод и свести к каноническому написанию из справочника;
 // новое значение заводится только после подтверждения, отказ => prev
-function resolveRef(kind: "plat" | "src", raw: string, prev: string | null): string | null {
+var REF_NEW_KEY = { plat: "ref_new_plat", src: "ref_new_src", series: "ref_new_series", genres: "ref_new_genre" };
+function resolveRef(kind: "plat" | "src" | "series" | "genres", raw: string, prev: string | null): string | null {
   var val = normSpace(raw);
   if (!val) return null;
   var values = sugValues(kind);
@@ -455,18 +467,27 @@ function resolveRef(kind: "plat" | "src", raw: string, prev: string | null): str
   if (best && bestD <= limit) {
     if (confirm(t("ref_similar").replace("{v}", best))) return best;
   }
-  if (confirm(t(kind === "plat" ? "ref_new_plat" : "ref_new_src").replace("{v}", val))) return val;
+  if (confirm(t(REF_NEW_KEY[kind]).replace("{v}", val))) return val;
   return prev; // отказ от создания — откат к прежнему значению
 }
 
 function fillSug(input: HTMLInputElement): void {
   var kind = input.dataset.act;
-  if (kind !== "plat" && kind !== "src" && kind !== "series") return;
+  if (kind !== "plat" && kind !== "src" && kind !== "series" && kind !== "genres") return;
   var box = input.parentElement!.querySelector(".sug");
   if (!box) return;
-  var q = input.value.trim().toLowerCase();
+  var q: string, chosen: Record<string, 1> = {};
+  if (kind === "genres") {
+    // фильтруем по последнему (недописанному) жанру; уже выбранные не предлагаем
+    var parts = input.value.split(",");
+    q = normSpace(parts.pop() || "").toLowerCase();
+    parts.forEach(function (p) { var pv = normSpace(p); if (pv) chosen[pv.toLowerCase()] = 1; });
+  } else {
+    q = input.value.trim().toLowerCase();
+  }
   var vals = sugValues(kind).filter(function (v) {
-    return v.toLowerCase() !== q && (!q || v.toLowerCase().indexOf(q) !== -1);
+    var lv = v.toLowerCase();
+    return lv !== q && !chosen[lv] && (!q || lv.indexOf(q) !== -1);
   }).slice(0, 12);
   box.innerHTML = vals.map(function (v) {
     return '<button type="button" class="sugbtn" data-sug="' + esc(v) + '">' + esc(v) + '</button>';
@@ -557,11 +578,11 @@ export function wireUI(): void {
   var list = document.getElementById("list")!;
   list.addEventListener("focusin", function (e: any) {
     var a = e.target.dataset && e.target.dataset.act;
-    if (a === "plat" || a === "src" || a === "series") fillSug(e.target);
+    if (a === "plat" || a === "src" || a === "series" || a === "genres") fillSug(e.target);
   });
   list.addEventListener("input", function (e: any) {
     var a = e.target.dataset && e.target.dataset.act;
-    if (a === "plat" || a === "src" || a === "series") fillSug(e.target);
+    if (a === "plat" || a === "src" || a === "series" || a === "genres") fillSug(e.target);
   });
   list.addEventListener("mousedown", function (e: any) {
     var b = e.target.closest(".sugbtn");
@@ -577,6 +598,17 @@ export function wireUI(): void {
     if (!g) return;
     if (input.dataset.act === "plat") g.platform = b.dataset.sug;
     else if (input.dataset.act === "series") g.series = b.dataset.sug;
+    else if (input.dataset.act === "genres") {
+      // выбор добавляется к списку; последний кусок ввода — это фильтр, его заменяем
+      var parts = input.value.split(",");
+      parts.pop();
+      var toks: string[] = [], seen: Record<string, 1> = {};
+      parts.concat([b.dataset.sug]).forEach(function (p: string) {
+        var v = p.replace(/\s+/g, " ").trim();
+        if (v && !seen[v.toLowerCase()]) { seen[v.toLowerCase()] = 1; toks.push(v); }
+      });
+      g.genres = toks.join(", ") || null;
+    }
     else g.source = b.dataset.sug;
     save();
     render();
@@ -805,8 +837,17 @@ export function wireUI(): void {
     }
     else if (act === "plat") { g.platform = resolveRef("plat", e.target.value, g.platform || null); save(); render(); }
     else if (act === "rel") { var rv = parseInt(e.target.value, 10); g.rel = (rv >= 1970 && rv <= 2030) ? rv : null; save(); render(); }
-    else if (act === "genres") { g.genres = e.target.value.trim() || null; save(); render(); }
-    else if (act === "series") { g.series = e.target.value.trim() || null; save(); render(); }
+    else if (act === "genres") {
+      // каждый жанр через запятую канонизируется отдельно; отказ = убрать его
+      var toks: string[] = [], seenG: Record<string, 1> = {};
+      e.target.value.split(",").forEach(function (tk: string) {
+        var rv2 = resolveRef("genres", tk, null);
+        if (rv2 && !seenG[rv2.toLowerCase()]) { seenG[rv2.toLowerCase()] = 1; toks.push(rv2); }
+      });
+      g.genres = toks.length ? toks.join(", ") : null;
+      save(); render();
+    }
+    else if (act === "series") { g.series = resolveRef("series", e.target.value, g.series || null); save(); render(); }
     else { g.source = resolveRef("src", e.target.value, g.source || null); save(); render(); }
   });
 
