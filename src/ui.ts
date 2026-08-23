@@ -234,19 +234,6 @@ export function render(): void {
     return filter === "all" || filter === "catalog" || g.status === filter;
   });
 
-  // платформы и лончеры для подсказок: стандартные + те, что уже введены
-  var plats: Record<string, 1> = {}, srcs: Record<string, 1> = {};
-  COMMON_PLATFORMS.forEach(function (p) { plats[p] = 1; });
-  COMMON_SOURCES.forEach(function (s) { srcs[s] = 1; });
-  state.games.forEach(function (g) {
-    if (g.platform) plats[g.platform] = 1;
-    if (g.source) srcs[g.source] = 1;
-  });
-  document.getElementById("platformList")!.innerHTML =
-    Object.keys(plats).map(function (p) { return '<option value="' + esc(p) + '">'; }).join("");
-  document.getElementById("sourceList")!.innerHTML =
-    Object.keys(srcs).map(function (s) { return '<option value="' + esc(s) + '">'; }).join("");
-
   var html = "";
   // сводка серии: если запрос совпадает с названием серии
   if (q && !noData) {
@@ -306,16 +293,22 @@ export function render(): void {
     }
     html += section(filter, filter === "catalog" ? t("tab_catalog") : (filter === "fav" ? t("tab_fav") : stLabel(filter)), shown, null);
   }
-  document.getElementById("list")!.innerHTML = html;
+  var listEl = document.getElementById("list")!;
+  listEl.innerHTML = html;
+  // epoch: full-rebuild counter, lets tests assert partial updates stay partial
+  listEl.dataset.epoch = String((+(listEl.dataset.epoch || "0")) + 1);
 
-  // «no Playnite data» chip: visible only while such games exist
-  var chip = document.getElementById("nodataChip");
-  if (chip) {
-    var nd = state.games.filter(function (g) { return !g.source && !g.genres && !g.cs; }).length;
-    (chip as any).hidden = !nd;
-    if (nd) chip.textContent = "⚠ " + t("nodata_chip") + " · " + nd;
-  }
+  updateNodataChip();
   (window as any).__lastRenderMs = performance.now() - t0; // perf budget probe (§7)
+}
+
+// «no Playnite data» chip: visible only while such games exist
+function updateNodataChip(): void {
+  var chip = document.getElementById("nodataChip");
+  if (!chip) return;
+  var nd = state.games.filter(function (g) { return !g.source && !g.genres && !g.cs; }).length;
+  (chip as any).hidden = !nd;
+  if (nd) chip.textContent = "⚠ " + t("nodata_chip") + " · " + nd;
 }
 
 /* ================= helpers ================= */
@@ -364,8 +357,32 @@ function patchCardByKey(k: string | null): void {
   el.replaceWith(tmp.firstChild!);
 }
 
+// точечное обновление всех экземпляров карточки игры (секция статуса +
+// годовые группы) — полный render() на 1500 играх стоит сотни мс на телефоне
+// замена сфокусированной карточки синхронно роняет blur→change со СТАРЫМ
+// значением инпута; на время патча change-обработчик выключен (см. wireUI)
+var patchBusy = false;
+function patchGame(g: Game): void {
+  patchBusy = true;
+  try {
+    var els = document.querySelectorAll('.card[data-id="' + g.id + '"]');
+    if (!els.length) { render(); return; }
+    els.forEach(function (el) {
+      if (!el.isConnected) return; // уже заменён вложенным вызовом
+      var ctxRaw = (el as HTMLElement).dataset.ctx!;
+      var tmp = document.createElement("div");
+      tmp.innerHTML = cardHTML(g, ctxRaw === "s" ? null : +ctxRaw);
+      el.replaceWith(tmp.firstChild!);
+    });
+  } finally { patchBusy = false; }
+}
+
 function syncClearBtn(): void {
   (document.getElementById("clearSearch") as any).hidden = !(document.getElementById("search") as HTMLInputElement).value;
+}
+
+function noDataQuery(): boolean {
+  return query.trim().toLowerCase() === "#nodata";
 }
 
 function scrollToResults(): void {
@@ -611,7 +628,13 @@ export function wireUI(): void {
     }
     else g.source = b.dataset.sug;
     save();
-    render();
+    var actKind = input.dataset.act;
+    if (actKind === "series" && query.trim()) render();
+    else if (noDataQuery() && (actKind === "src" || actKind === "genres")) render();
+    else {
+      patchGame(g);
+      if (actKind === "src" || actKind === "genres") updateNodataChip();
+    }
   });
 
   list.addEventListener("click", function (e: any) {
@@ -694,14 +717,15 @@ export function wireUI(): void {
     if (act === "fav") {
       g.fav = !g.fav;
       save();
-      render();
+      // на вкладке избранного карточка должна исчезнуть — там нужен полный рендер
+      if (filter === "fav") render(); else patchGame(g);
       return;
     }
     if (act === "rate") {
       var v = +e.target.dataset.v;
       g.rating = (g.rating === v ? null : v);
       save();
-      render();
+      if (sortMode === "rating") render(); else patchGame(g);
       return;
     }
     if (act === "mergeask") {
@@ -781,6 +805,9 @@ export function wireUI(): void {
   });
 
   list.addEventListener("change", function (e: any) {
+    // blur при точечной замене карточки даёт change со старым значением —
+    // стейт уже обновил сам патч, обрабатывать такое событие нельзя
+    if (patchBusy || !e.target.isConnected) return;
     var act = e.target.dataset.act;
     if (["year", "plat", "src", "oldcount", "addyearsel", "note", "rel", "genres", "series", "rename"].indexOf(act) === -1) return;
     var card = e.target.closest(".card");
@@ -795,7 +822,7 @@ export function wireUI(): void {
       save();
       render();
     }
-    else if (act === "note") { g.note = e.target.value.trim() || null; save(); render(); }
+    else if (act === "note") { g.note = e.target.value.trim() || null; save(); patchGame(g); }
     else if (act === "year") {
       var oldY = card.dataset.ctx === "s" ? null : +card.dataset.ctx;
       var newY = +e.target.value;
@@ -818,7 +845,7 @@ export function wireUI(): void {
       g.counts = g.counts || {};
       if (v2 > 1) g.counts[cy2] = v2; else delete g.counts[cy2];
       save();
-      render();
+      patchGame(g);
     }
     else if (act === "addyearsel") {
       var raw = e.target.value;
@@ -835,8 +862,13 @@ export function wireUI(): void {
         toast("«" + g.name + "» " + t("added_to") + yLabel(v) + (pcv > 1 ? " ×" + pcv : ""));
       }
     }
-    else if (act === "plat") { g.platform = resolveRef("plat", e.target.value, g.platform || null); save(); render(); }
-    else if (act === "rel") { var rv = parseInt(e.target.value, 10); g.rel = (rv >= 1970 && rv <= 2030) ? rv : null; save(); render(); }
+    else if (act === "plat") { g.platform = resolveRef("plat", e.target.value, g.platform || null); save(); patchGame(g); }
+    else if (act === "rel") {
+      var rv = parseInt(e.target.value, 10);
+      g.rel = (rv >= 1970 && rv <= 2030) ? rv : null;
+      save();
+      if (sortMode === "rel") render(); else patchGame(g);
+    }
     else if (act === "genres") {
       // каждый жанр через запятую канонизируется отдельно; отказ = убрать его
       var toks: string[] = [], seenG: Record<string, 1> = {};
@@ -845,10 +877,21 @@ export function wireUI(): void {
         if (rv2 && !seenG[rv2.toLowerCase()]) { seenG[rv2.toLowerCase()] = 1; toks.push(rv2); }
       });
       g.genres = toks.length ? toks.join(", ") : null;
-      save(); render();
+      save();
+      // правка жанров/лончера меняет пул «#nodata» — при активном фильтре нужен полный рендер
+      if (noDataQuery()) render(); else { patchGame(g); updateNodataChip(); }
     }
-    else if (act === "series") { g.series = resolveRef("series", e.target.value, g.series || null); save(); render(); }
-    else { g.source = resolveRef("src", e.target.value, g.source || null); save(); render(); }
+    else if (act === "series") {
+      g.series = resolveRef("series", e.target.value, g.series || null);
+      save();
+      // series участвует в поиске (сводка ❖ и точное имя серии) — при запросе рендерим всё
+      if (query.trim()) render(); else patchGame(g);
+    }
+    else {
+      g.source = resolveRef("src", e.target.value, g.source || null);
+      save();
+      if (noDataQuery()) render(); else { patchGame(g); updateNodataChip(); }
+    }
   });
 
   document.getElementById("sortSel")!.addEventListener("change", function (e: any) {

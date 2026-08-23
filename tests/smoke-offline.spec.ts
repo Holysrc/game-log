@@ -21,7 +21,7 @@ test.describe("offline via service worker", () => {
     });
     await expect
       .poll(
-        () => page.evaluate(() => caches.has("gamelog-shell-v1")),
+        () => page.evaluate(() => caches.has("gamelog-shell-v2")),
         { message: "shell cache must exist" }
       )
       .toBe(true);
