@@ -50,6 +50,12 @@ test.describe("@shots key screens", () => {
     await page.locator('.yearhead[data-key="backlog"]').scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     await page.screenshot({ path: shot(ti, "11-cards-view") });
+    // раскрытие тайла: окно на всю ширину под рядом
+    const backlogSec = page.locator(".sec", { has: page.locator('.yearhead[data-key="backlog"]') });
+    await backlogSec.locator(".cards .card .name").first().click();
+    await page.locator(".dcell .detail").scrollIntoViewIfNeeded();
+    await page.waitForTimeout(300);
+    await page.screenshot({ path: shot(ti, "11b-cards-open") });
   });
 
   test("settings panel", async ({ page }, ti) => {

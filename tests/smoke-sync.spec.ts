@@ -102,7 +102,8 @@ test("Apps Script (Drive) sync connects and pulls newer state", async ({ page },
   await expect(page.locator("#fstatus")).toContainText(`drive · ${tr.sync}`);
   // a local edit pushes back over POST
   await page.locator(".card", { hasText: "Remote Alpha" }).first().locator(".name").click();
-  await page.locator(`.card.open button[data-act="fav"]`).click();
+  // playing-игра на ⌂ — тайл: его раскрытие живёт в соседней ячейке .dcell
+  await page.locator('.card.open [data-act="fav"], .dcell [data-act="fav"]').first().click();
   await expect.poll(() => putBody, { timeout: 8000 }).not.toBeNull();
   expect(JSON.parse(putBody!).games.some((g: any) => g.name === "Remote Alpha")).toBe(true);
 });

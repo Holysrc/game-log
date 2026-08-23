@@ -121,6 +121,21 @@ test("stars render, community score chip, rating editable", async ({ page }, ti)
   await expect(after.locator(".rate .star.on")).toHaveCount(5);
 });
 
+test("quick note: 📝 icon opens an inline editor without edit mode", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const card = await openCard(page, "Beta Blade"); // заметки нет — виден 📝
+  await card.locator('[data-act="noteadd"]').click();
+  const ta = page.locator('textarea[data-act="notequick"]');
+  await ta.fill("quick note here");
+  await ta.blur();
+  await expect(
+    page.locator(".card", { hasText: "Beta Blade" }).locator(".micnote").first()
+  ).toBeVisible();
+  // заметка появилась текстом в раскрытии, 📝-кнопка исчезла
+  await expect(page.locator(".card.open .fval", { hasText: "quick note here" })).toBeVisible();
+  await expect(page.locator('.card.open [data-act="noteadd"]')).toHaveCount(0);
+});
+
 test("note saved and 📝 marker appears", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
   const card = await openEdit(page, "Beta Blade");

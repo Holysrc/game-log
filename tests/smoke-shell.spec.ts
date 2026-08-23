@@ -58,6 +58,27 @@ test("desktop grid rows have equal card heights", async ({ page }, ti) => {
   expect(Math.abs(a!.height - b!.height), "side-by-side cards must align").toBeLessThanOrEqual(1);
 });
 
+test("desktop cards: detail opens full-width below the row, neighbor keeps height", async ({ page }, ti) => {
+  test.skip(meta(ti).form !== "desktop", "desktop layout only");
+  await openApp(page, ti, tinyState());
+  await page.locator(".tab").nth(6).click(); // catalog
+  await page.locator("#viewBtn").click(); // список → карточки
+  const tiles = page.locator(".cards .card");
+  const before = (await tiles.nth(1).boundingBox())!;
+  await tiles.nth(0).locator(".name").click();
+  const detail = page.locator(".dcell .detail");
+  await expect(detail).toBeVisible();
+  // сосед по ряду не растянулся
+  const after = (await tiles.nth(1).boundingBox())!;
+  expect(Math.abs(after.height - before.height)).toBeLessThanOrEqual(1);
+  // окно раскрытия — на всю ширину сетки и ниже ряда
+  const gridBox = (await page.locator(".cards").first().boundingBox())!;
+  const dBox = (await page.locator(".dcell").boundingBox())!;
+  expect(dBox.width).toBeGreaterThan(gridBox.width * 0.95);
+  const tileBox = (await tiles.nth(0).boundingBox())!;
+  expect(dBox.y).toBeGreaterThanOrEqual(tileBox.y + tileBox.height - 2);
+});
+
 test("theme switching applies Sega Genesis palette and persists", async ({ page }, ti) => {
   await openApp(page, ti, tinyState());
   // default: FF palette, no data-theme

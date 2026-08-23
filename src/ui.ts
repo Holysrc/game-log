@@ -15,6 +15,7 @@ var editKey: string | null = null;          // card in edit mode (always === ope
 var editPendingStatus: string | null = null; // status picked in the edit form, applied on save
 var armDelKey: string | null = null;        // delete button waits for the confirming tap
 var armDelTimer: any = null;
+var noteEditKey: string | null = null;      // quick note editor (📝) open on this card
 var SORTKEY = "gamelog-sort";
 var sortMode = "default";
 try { sortMode = localStorage.getItem(SORTKEY) || "default"; } catch (e) {}
@@ -169,6 +170,8 @@ function fieldHTML(label: string, valueHTML: string, cls?: string): string {
 function detailViewHTML(g: Game, ctx: number | null, key: string): string {
   var d = '<div class="detail">';
   d += '<div class="dhead"><h4 class="dname">' + esc(g.name) + '</h4>'
+    // быстрое добавление заметки: 📝 виден, пока заметки нет
+    + (!g.note ? '<button class="iconbtn" data-act="noteadd" aria-label="' + t("lbl_note") + '">📝</button>' : '')
     + '<button class="iconbtn favtop' + (g.fav ? " on" : "") + '" data-act="fav" aria-label="'
     + (g.fav ? t("fav_off") : t("fav_on")) + '">' + FLAG_SVG + '</button>'
     + '<button class="iconbtn" data-act="close" aria-label="' + t("res_close") + '">✕</button></div>';
@@ -214,6 +217,11 @@ function detailViewHTML(g: Game, ctx: number | null, key: string): string {
   if (quick) d += '<div class="qrow">' + quick + '</div>';
   var mg = mergeHTML(g);
   if (mg) d += '<div class="qrow">' + mg + '</div>';
+  // поле новой заметки открывается по 📝 внизу карточки, без режима «Изменить»
+  if (noteEditKey === key) {
+    d += '<div class="qrow"><textarea class="textarea" data-act="notequick" placeholder="'
+      + t("note_ph") + '"></textarea></div>';
+  }
 
   var armed = armDelKey === key;
   d += '<div class="commands">'
@@ -308,8 +316,9 @@ function cardHTML(g: Game, ctx: number | null, kind: string): string {
       + starsStatic(g)
       + '</div>'
       + '</div></div>'
-      + (open ? detailHTML(g, ctx, key) : "")
       + '</div>';
+    // раскрытие тайла живёт ОТДЕЛЬНОЙ полноширинной ячейкой сетки (.dcell),
+    // чтобы сосед по ряду не растягивался — см. section()
   }
 
   var rowMetaParts: string[] = [];
@@ -393,8 +402,29 @@ export function render(): void {
     var extra = key === "backlog" ? '<button class="dice" data-dice aria-label="' + t("dice_aria") + '">🎲</button>' : "";
     var body = "";
     if (!col) {
-      var inner = items.map(function (g) { return cardHTML(g, ctx, kind); }).join("");
-      body = kind === "tile" ? '<div class="cards">' + inner + '</div>' : '<div class="win panel">' + inner + '</div>';
+      if (kind === "tile") {
+        // раскрытие тайла — полноширинная ячейка ПОД его рядом: сосед по ряду
+        // не растягивается, окно занимает ширину обеих колонок
+        var ctxs2 = ctx === null ? "s" : String(ctx);
+        var openIdx = -1;
+        items.forEach(function (g, i) { if (g.id + "@" + ctxs2 === openId) openIdx = i; });
+        var cols = typeof matchMedia !== "undefined" && matchMedia("(min-width:640px)").matches ? 2 : 1;
+        var dIdx = openIdx < 0 ? -1
+          : Math.min(openIdx + (cols === 2 && openIdx % 2 === 0 ? 1 : 0), items.length - 1);
+        var inner = "";
+        items.forEach(function (g, i) {
+          inner += cardHTML(g, ctx, "tile");
+          if (i === dIdx && openIdx >= 0) {
+            var og = items[openIdx];
+            inner += '<div class="dcell" data-id="' + og.id + '" data-ctx="' + ctxs2 + '">'
+              + detailHTML(og, ctx, openId!) + '</div>';
+          }
+        });
+        body = '<div class="cards">' + inner + '</div>';
+      } else {
+        body = '<div class="win panel">'
+          + items.map(function (g) { return cardHTML(g, ctx, kind); }).join("") + '</div>';
+      }
     }
     return '<section class="sec">'
       + '<div class="yearhead' + (col ? ' col' : '') + '" data-key="' + key
@@ -490,9 +520,13 @@ function patchCardByKey(k: string | null): void {
   if (!g) return;
   var el = document.querySelector('.card[data-id="' + parts[0] + '"][data-ctx="' + parts[1] + '"]');
   if (!el) { render(); return; }
-  var kind = el.classList.contains("tile") ? "tile" : "rowv";
+  if (el.classList.contains("tile")) {
+    // detail тайла — сосед по сетке, точечный патч не воспроизведёт раскладку
+    renderKeepScroll(el);
+    return;
+  }
   var tmp = document.createElement("div");
-  tmp.innerHTML = cardHTML(g, parts[1] === "s" ? null : +parts[1], kind);
+  tmp.innerHTML = cardHTML(g, parts[1] === "s" ? null : +parts[1], "rowv");
   el.replaceWith(tmp.firstChild!);
 }
 
@@ -721,6 +755,7 @@ export function wireUI(): void {
     }
     filter = tb.dataset.f;
     stopEdit();
+    noteEditKey = null;
     openId = null;
     document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("active", x === tb); });
     render();
@@ -809,7 +844,7 @@ export function wireUI(): void {
       }
       return;
     }
-    var card = e.target.closest(".card");
+    var card = e.target.closest(".card,.dcell"); // detail тайла живёт в .dcell рядом с карточкой
     if (!card) return;
     var id = +card.dataset.id;
     var ctxRaw = card.dataset.ctx;
@@ -834,6 +869,7 @@ export function wireUI(): void {
       openId = (openId === key ? null : key);
       mergeAsk = null;
       armDelKey = null;
+      noteEditKey = null;
       if (prevEdit && prevEdit !== prev) patchCardByKey(prevEdit);
       patchCardByKey(prev);
       if (openId && openId !== prev) patchCardByKey(openId);
@@ -844,6 +880,7 @@ export function wireUI(): void {
       openId = null;
       mergeAsk = null;
       armDelKey = null;
+      noteEditKey = null;
       patchCardByKey(key);
       return;
     }
@@ -851,7 +888,15 @@ export function wireUI(): void {
       editKey = key;
       editPendingStatus = g.status;
       armDelKey = null;
+      noteEditKey = null;
       patchCardByKey(key);
+      return;
+    }
+    if (act === "noteadd") {
+      noteEditKey = key;
+      patchCardByKey(key);
+      var ta = document.querySelector('textarea[data-act="notequick"]') as HTMLTextAreaElement | null;
+      if (ta) ta.focus();
       return;
     }
     if (act === "canceledit") {
@@ -997,10 +1042,21 @@ export function wireUI(): void {
     }
   });
 
-  // «+ Прошёл в…» — единственное быстрое действие со сменой данных через select
+  // быстрые действия со сменой данных: «+ Прошёл в…» и новая заметка по 📝
   list.addEventListener("change", function (e: any) {
-    if (e.target.dataset.act !== "addyearsel") return;
-    var card = e.target.closest(".card");
+    var act = e.target.dataset.act;
+    if (act === "notequick") {
+      var ncard = e.target.closest(".card,.dcell");
+      var ng = state.games.find(function (x) { return x.id === +ncard.dataset.id; });
+      if (!ng) return;
+      ng.note = e.target.value.trim() || null;
+      noteEditKey = null;
+      save();
+      render();
+      return;
+    }
+    if (act !== "addyearsel") return;
+    var card = e.target.closest(".card,.dcell");
     var g = state.games.find(function (x) { return x.id === +card.dataset.id; });
     if (!g) return;
     var raw = e.target.value;
@@ -1029,6 +1085,10 @@ export function wireUI(): void {
     if (editKey) {
       var k = stopEdit();
       patchCardByKey(k);
+    } else if (noteEditKey) {
+      var nk = noteEditKey;
+      noteEditKey = null;
+      patchCardByKey(nk);
     } else if (openId) {
       var p = openId;
       openId = null;
@@ -1037,6 +1097,11 @@ export function wireUI(): void {
       patchCardByKey(p);
     }
   });
+
+  // смена числа колонок карточной сетки двигает .dcell — перерисовать
+  try {
+    matchMedia("(min-width:640px)").addEventListener("change", function () { render(); });
+  } catch (e) {}
 
   document.getElementById("sortSel")!.addEventListener("change", function (e: any) {
     sortMode = e.target.value;

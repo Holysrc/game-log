@@ -331,7 +331,8 @@
   @keyframes winOpen{from{transform:scaleY(.3);opacity:.3}}
   @media (prefers-reduced-motion:reduce){.detail{animation:none}}
   .rowv .detail{margin:4px 4px 8px}
-  .tile .detail{margin-top:12px}
+  /* раскрытие тайла — полноширинная ячейка под рядом; сосед не растягивается */
+  .dcell{grid-column:1/-1;min-width:0}
   .dhead{display:flex;align-items:center;gap:4px;margin-bottom:8px}
   .dname{flex:1;min-width:0;font-size:.88rem;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
   .iconbtn{
