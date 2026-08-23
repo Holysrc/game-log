@@ -917,6 +917,23 @@ export function wireUI(): void {
       animKey = null;
       var after = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]');
       if (after) window.scrollBy(0, after.getBoundingClientRect().top - topBefore);
+      // открытие у нижнего края: довернуть страницу, чтобы окно раскрытия
+      // было видно, но верх карточки не ушёл под sticky-бар
+      if (after && openId === key) {
+        var dEl: Element | null = after.classList.contains("tile")
+          ? document.querySelector('.dcell[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]')
+          : after;
+        if (dEl) {
+          var over = dEl.getBoundingClientRect().bottom - window.innerHeight + 12;
+          var room = after.getBoundingClientRect().top - 84; // sticky-бар + заголовок ряда
+          var needScroll = Math.min(over, room);
+          if (needScroll > 0) {
+            var smooth = !(typeof matchMedia !== "undefined"
+              && matchMedia("(prefers-reduced-motion: reduce)").matches);
+            window.scrollBy({ top: needScroll, behavior: smooth ? "smooth" : "auto" } as any);
+          }
+        }
+      }
       return;
     }
     if (act === "close") {

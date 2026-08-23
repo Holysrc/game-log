@@ -237,9 +237,18 @@ test.describe("toggling neighbors keeps the tapped card in place", () => {
     await cards.nth(to).scrollIntoViewIfNeeded();
     const before = (await cards.nth(to).boundingBox())!.y;
     await cards.nth(to).locator(".name").click();
-    await page.waitForTimeout(120);
+    await page.waitForTimeout(400);
     const after = (await cards.nth(to).boundingBox())!.y;
-    expect(Math.abs(after - before), "tapped card must not drift").toBeLessThanOrEqual(2);
+    const delta = after - before;
+    if (Math.abs(delta) > 2) {
+      // единственный допустимый сдвиг — доскролл ВНИЗ, чтобы показать окно
+      // раскрытия у нижнего края; карточка при этом остаётся на экране
+      expect(delta, "движение допустимо только вниз-к-показу окна").toBeLessThan(0);
+      const d = (await page.locator(".card.open .detail, .dcell .detail").boundingBox())!;
+      const vh = page.viewportSize()!.height;
+      expect(d.y + d.height).toBeLessThanOrEqual(vh + 4);
+      expect(after).toBeGreaterThanOrEqual(0);
+    }
   }
 
   test("list view: neighbor below", async ({ page }, ti) => {
@@ -261,6 +270,20 @@ test.describe("toggling neighbors keeps the tapped card in place", () => {
     const sec = page.locator(".sec", { has: page.locator('.yearhead[data-key="backlog"]') });
     await assertStablePos(page, sec.locator(".cards > .card"), 2);
   });
+});
+
+test("opening a card at the bottom edge reveals its detail window", async ({ page }, ti) => {
+  await openApp(page, ti, makeState(120));
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await page.waitForTimeout(200);
+  const last = page.locator("#list .card").last();
+  await last.locator(".name").click();
+  await page.waitForTimeout(400); // авто-доскролл к окну раскрытия
+  const vh = page.viewportSize()!.height;
+  const open = (await page.locator(".card.open").boundingBox())!;
+  const detail = (await page.locator(".card.open .detail, .dcell .detail").boundingBox())!;
+  expect(open.y, "верх карточки не должен уйти за экран").toBeGreaterThanOrEqual(0);
+  expect(detail.y, "окно раскрытия должно быть видно").toBeLessThan(vh - 100);
 });
 
 test("in-place detail updates don't replay the open animation", async ({ page }, ti) => {
