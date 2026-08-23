@@ -4,8 +4,12 @@ var LKEY = "gamelog-lang";
 export var TR: Record<string, Record<string, string>> = {
 ru:{
   st_backlog:"Беклог",st_playing:"Играю",st_done:"Пройдено",st_dropped:"Брошено",st_onhold:"Отложено",
-  title:"Журнал игр",subtitle:"беклог · прогресс · история прохождений",
+  title:"Журнал игр",
   stat_playing:"играю",stat_backlog:"беклог",stat_done:"пройдено",
+  edit:"Изменить",save:"Сохранить",del_sure:"Точно?",
+  view_list:"Список",view_cards:"Карточки",view_aria:"Вид списка",
+  lbl_status:"Статус",lbl_history:"Прохождения",lbl_rating:"Оценка",
+  lbl_time:"Время",lbl_note:"Заметка",
   tab_all_aria:"Все игры — домашний экран",tab_catalog:"Библиотека",tab_fav:"Избранное",fav_on:"В избранное",fav_off:"Убрать из избранного",search_ph:"Поиск по играм…",add_btn:"+ Добавить",prompt_name:"Название игры:",
   dice_bar:"🎲 Во что поиграть? Пусть решит судьба",dice_aria:"Случайная игра из беклога",
   dice_none:"Беклог пуст — вот это достижение!",dice_pick:"Судьба выбрала: ",
@@ -68,8 +72,12 @@ ru:{
 },
 en:{
   st_backlog:"Backlog",st_playing:"Playing",st_done:"Beaten",st_dropped:"Dropped",st_onhold:"On hold",
-  title:"Game Log",subtitle:"backlog · progress · completion history",
+  title:"Game Log",
   stat_playing:"playing",stat_backlog:"backlog",stat_done:"beaten",
+  edit:"Edit",save:"Save",del_sure:"Sure?",
+  view_list:"List",view_cards:"Cards",view_aria:"View mode",
+  lbl_status:"Status",lbl_history:"Playthroughs",lbl_rating:"Rating",
+  lbl_time:"Time",lbl_note:"Note",
   tab_all_aria:"All games — home screen",tab_catalog:"Library",tab_fav:"Favorites",fav_on:"Add to favorites",fav_off:"Remove from favorites",search_ph:"Search games…",add_btn:"+ Add",prompt_name:"Game title:",
   dice_bar:"🎲 What to play? Let fate decide",dice_aria:"Random game from backlog",
   dice_none:"Backlog is empty — what an achievement!",dice_pick:"Fate has chosen: ",

@@ -6,7 +6,7 @@ var TKEY = "gamelog-theme";
 
 // value "" = default Final Fantasy palette from §6 (no data-theme attr)
 export var THEMES: Array<{ id: string; label: string; themeColor: string }> = [
-  { id: "", label: "Final Fantasy", themeColor: "#0b1120" },
+  { id: "", label: "Final Fantasy", themeColor: "#070B1E" },
   { id: "genesis", label: "Sega Genesis", themeColor: "#0b0b0e" }
 ];
 
