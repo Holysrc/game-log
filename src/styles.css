@@ -266,7 +266,7 @@
   .xmult{flex:0 0 auto;font-family:var(--num);font-size:1rem;line-height:1;color:var(--gold)}
   .rowmeta{flex:0 0 auto;font-size:.72rem;color:var(--text-dim);white-space:nowrap;
     max-width:38%;overflow:hidden;text-overflow:ellipsis}
-  .chev{flex:0 0 auto;font-size:11px;color:rgba(var(--border-rgb),.6)}
+  .chev{flex:0 0 auto;font-size:11px;color:var(--blue)}
   @media (hover:hover){.rowv .cmain:hover .chev{color:var(--gold)}}
   .rowv.open .chev{color:var(--gold)}
   .cs{
@@ -367,6 +367,8 @@
   /* quick actions row (view mode) + merge suggestions */
   .qrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
   .qrow select{flex:1 1 auto;max-width:240px}
+  .qrow .mpair{flex:1 1 auto;max-width:320px}
+  .mpair select{flex:1 1 auto;min-width:150px}
   .detail select{
     background:rgba(var(--ink1),.7);border:1px solid rgba(var(--border-rgb),.4);
     border-radius:var(--r-in);

@@ -107,6 +107,7 @@ function addYearSelHTML(g: Game, ctx: number | null): string {
   return '<span class="mpair">' + sel
     + '<span class="xmark">×</span>'
     + '<input class="input oldcnt" data-role="precount" type="number" min="1" max="99" value="1" title="' + t("times").trim() + '">'
+    + '<span class="unit">' + t("times") + '</span>'
     + '</span>';
 }
 
