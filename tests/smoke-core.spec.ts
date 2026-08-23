@@ -263,6 +263,19 @@ test.describe("toggling neighbors keeps the tapped card in place", () => {
   });
 });
 
+test("in-place detail updates don't replay the open animation", async ({ page }, ti) => {
+  await openApp(page, ti, tinyState());
+  const card = await openCard(page, "Beta Blade");
+  // настоящее открытие помечено .anim (класс анимации раскрытия)
+  await expect(page.locator(".card.open .detail")).toHaveClass(/anim/);
+  // 📝 и «Изменить» обновляют окно на месте — без переоткрытия
+  await card.locator('[data-act="noteadd"]').click();
+  await expect(page.locator(".card.open .detail")).not.toHaveClass(/anim/);
+  await page.locator('.card.open [data-act="edit"]').click();
+  await expect(page.locator(".card.open .detail.editing")).toBeVisible();
+  await expect(page.locator(".card.open .detail")).not.toHaveClass(/anim/);
+});
+
 test("empty app shows empty state", async ({ page }, ti) => {
   await openApp(page, ti, null);
   await expect(page.locator(".empty")).toBeVisible();

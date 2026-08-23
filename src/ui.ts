@@ -16,6 +16,8 @@ var editPendingStatus: string | null = null; // status picked in the edit form, 
 var armDelKey: string | null = null;        // delete button waits for the confirming tap
 var armDelTimer: any = null;
 var noteEditKey: string | null = null;      // quick note editor (📝) open on this card
+var animKey: string | null = null;          // play the open animation only for a REAL open,
+                                            // not for in-place detail updates (📝, «Изменить»)
 var SORTKEY = "gamelog-sort";
 var sortMode = "default";
 try { sortMode = localStorage.getItem(SORTKEY) || "default"; } catch (e) {}
@@ -168,7 +170,7 @@ function fieldHTML(label: string, valueHTML: string, cls?: string): string {
 
 /* ---- expanded sub-window: view mode ---- */
 function detailViewHTML(g: Game, ctx: number | null, key: string): string {
-  var d = '<div class="detail">';
+  var d = '<div class="detail' + (animKey === key ? " anim" : "") + '">';
   d += '<div class="dhead"><h4 class="dname">' + esc(g.name) + '</h4>'
     // быстрое добавление заметки: 📝 виден, пока заметки нет
     + (!g.note ? '<button class="iconbtn" data-act="noteadd" aria-label="' + t("lbl_note") + '">📝</button>' : '')
@@ -690,7 +692,9 @@ export function rollDice(pool: Game[]): boolean {
   state.collapsed["backlog"] = false;
   stopEdit();
   openId = pick.id + "@s";
+  animKey = openId;
   render();
+  animKey = null;
   var el = document.querySelector('.card[data-id="' + pick.id + '"][data-ctx="s"]');
   if (el) {
     el.classList.add("chosen");
@@ -906,9 +910,11 @@ export function wireUI(): void {
         anchorEl = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]') || card;
       }
       var topBefore = anchorEl.getBoundingClientRect().top;
+      animKey = openId; // настоящее открытие — единственный случай с анимацией
       if (prevEdit && prevEdit !== prev) patchCardByKey(prevEdit);
       patchCardByKey(prev);
       if (openId && openId !== prev) patchCardByKey(openId);
+      animKey = null;
       var after = document.querySelector('.card[data-id="' + id + '"][data-ctx="' + ctxRaw + '"]');
       if (after) window.scrollBy(0, after.getBoundingClientRect().top - topBefore);
       return;
@@ -931,8 +937,10 @@ export function wireUI(): void {
       return;
     }
     if (act === "noteadd") {
-      noteEditKey = key;
-      patchCardByKey(key);
+      if (noteEditKey !== key) { // повторный тап не пересоздаёт поле и не стирает текст
+        noteEditKey = key;
+        patchCardByKey(key);
+      }
       var ta = document.querySelector('textarea[data-act="notequick"]') as HTMLTextAreaElement | null;
       if (ta) ta.focus();
       return;
