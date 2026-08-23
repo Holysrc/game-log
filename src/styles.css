@@ -414,11 +414,13 @@
   .textarea{resize:vertical;min-height:64px;line-height:1.4}
   .status-pick{display:flex;gap:8px;flex-wrap:wrap}
   .opt{
-    position:relative;font-family:var(--px);font-size:7px;letter-spacing:1px;
+    position:relative;font-family:var(--px);font-size:7px;letter-spacing:.5px;
     text-transform:uppercase;color:var(--text-dim);background:none;cursor:pointer;
     border:1px solid rgba(var(--border-rgb),.25);border-radius:var(--r-in);
-    padding:8px 8px 8px 20px;min-height:44px;
+    padding:6px 8px 6px 18px;
   }
+  /* узкий вид как в прототипе, но тап-цель ≥44px: невидимое расширение зоны */
+  .opt::after{content:"";position:absolute;left:0;right:0;top:-9px;bottom:-9px}
   .opt::before{content:"▶";position:absolute;left:7px;top:50%;transform:translateY(-50%);
     font-size:7px;color:var(--gold);opacity:0}
   .opt[aria-pressed="true"]{color:var(--gold);border-color:rgba(var(--gold-rgb),.6);
@@ -680,11 +682,10 @@
     body{max-width:1024px;}
     h1{font-size:20px}
     .tab,.btn,.dice,.dicebar,#clearSearch,.sortrow select,
-    .detail select,.input,.yearhead,.cmd,.opt,.iconbtn{min-height:0}
+    .detail select,.input,.yearhead,.cmd,.iconbtn{min-height:0}
     /* .search keeps 52px: .yearhead sticky top is tuned to the 68px mainbar */
     .dice{min-width:0;padding:4px 8px}
     .cmd{padding:8px 4px 8px 16px}
-    .opt{padding:8px 8px 8px 20px}
     .rowv .cmain{min-height:34px;padding:4px 10px}
     .micser{padding:8px 6px;margin:-6px -2px}
     .rate .star{padding:4px 6px}
